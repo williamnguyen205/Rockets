@@ -350,7 +350,7 @@ export function LearnPage() {
                 <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
                 Beginner investor course
               </div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-normal text-white">Learn the basics calmly.</h1>
+              <h1 className="mt-4 text-4xl font-semibold tracking-normal text-white">Learn the basics with Clarity</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
                 One clear next step, short lessons, and a tutor when you want plain-English help.
               </p>
