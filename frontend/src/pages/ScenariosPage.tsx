@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { ArrowRight, BrainCircuit, Loader2, SlidersHorizontal, Sparkles, TrendingUp, UserRound } from "lucide-react"
+import { ArrowLeftRight, ArrowRight, BrainCircuit, Loader2, SlidersHorizontal, Sparkles, TrendingUp, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { simulateScenario, type ScenarioSimulationAnswer } from "@/lib/api"
@@ -26,6 +26,7 @@ import {
   getAllocation,
   getHoldingValue,
   getPortfolioValue,
+  TARGET_ALLOCATION_BY_PROFILE,
   type Holding,
   type InvestmentTimeline,
   type InvestorProfile,
@@ -291,6 +292,163 @@ function addFundHolding(holdings: Holding[], amountUsd: number) {
       dataSource: "Curated beginner ETF profile; prices are demo values.",
     },
   ]
+}
+
+type SuggestedTrade = {
+  action: "sell" | "buy"
+  symbol?: string
+  shares?: number
+  amountUsd: number
+  label: string
+}
+
+function computeSuggestedTrades(
+  snapshot: ReturnType<typeof import("@/lib/scenarioPortfolio").buildScenarioPortfolioSnapshot>,
+  holdings: Holding[],
+): SuggestedTrade[] {
+  if (snapshot.totalValueUsd <= 0) return []
+
+  const target = TARGET_ALLOCATION_BY_PROFILE[snapshot.profile]
+  const total = snapshot.totalValueUsd
+  const trades: SuggestedTrade[] = []
+
+  const stocksDrift = snapshot.stocksPct - target.stocks
+  const fundsDrift = snapshot.fundsPct - target.funds
+  const cashDrift = snapshot.cashPct - target.cash
+
+  if (stocksDrift > 5) {
+    const excess = (stocksDrift / 100) * total
+    const topStock = [...holdings]
+      .filter((h) => h.category === "stock")
+      .sort((a, b) => b.shares * b.lastPrice - a.shares * a.lastPrice)[0]
+    if (topStock && topStock.lastPrice > 0) {
+      const raw = excess / topStock.lastPrice
+      const shares = Math.min(parseFloat(raw.toFixed(2)), topStock.shares)
+      if (shares > 0.01) {
+        trades.push({
+          action: "sell",
+          symbol: topStock.symbol,
+          shares,
+          amountUsd: shares * topStock.lastPrice,
+          label: `Sell ~${shares.toFixed(2)} shares of ${topStock.symbol} (≈${formatCurrency(shares * topStock.lastPrice)}) — reduces stocks from ${snapshot.stocksPct}% toward your ${target.stocks}% target`,
+        })
+      }
+    }
+  } else if (stocksDrift < -5) {
+    const deficit = Math.abs((stocksDrift / 100) * total)
+    if (deficit > 50) {
+      trades.push({
+        action: "buy",
+        amountUsd: deficit,
+        label: `Add ≈${formatCurrency(deficit)} to stocks — moves you from ${snapshot.stocksPct}% toward your ${target.stocks}% target`,
+      })
+    }
+  }
+
+  if (fundsDrift > 5) {
+    const excess = (fundsDrift / 100) * total
+    const topFund = [...holdings]
+      .filter((h) => h.category === "fund")
+      .sort((a, b) => b.shares * b.lastPrice - a.shares * a.lastPrice)[0]
+    if (topFund && topFund.lastPrice > 0) {
+      const raw = excess / topFund.lastPrice
+      const shares = Math.min(parseFloat(raw.toFixed(2)), topFund.shares)
+      if (shares > 0.01) {
+        trades.push({
+          action: "sell",
+          symbol: topFund.symbol,
+          shares,
+          amountUsd: shares * topFund.lastPrice,
+          label: `Trim ~${shares.toFixed(2)} shares of ${topFund.symbol} (≈${formatCurrency(shares * topFund.lastPrice)}) — reduces funds from ${snapshot.fundsPct}% toward your ${target.funds}% target`,
+        })
+      }
+    }
+  } else if (fundsDrift < -5) {
+    const deficit = Math.abs((fundsDrift / 100) * total)
+    if (deficit > 50) {
+      trades.push({
+        action: "buy",
+        amountUsd: deficit,
+        label: `Add ≈${formatCurrency(deficit)} to mutual funds — moves you from ${snapshot.fundsPct}% toward your ${target.funds}% target`,
+      })
+    }
+  }
+
+  if (cashDrift > 8) {
+    const excess = (cashDrift / 100) * total
+    if (excess > 50) {
+      trades.push({
+        action: "buy",
+        amountUsd: excess,
+        label: `Deploy ≈${formatCurrency(excess)} of idle cash into your portfolio — reduces cash from ${snapshot.cashPct}% toward your ${target.cash}% target`,
+      })
+    }
+  }
+
+  return trades
+}
+
+function SuggestedTradesCard({
+  snapshot,
+  holdings,
+  profile,
+}: {
+  snapshot: ReturnType<typeof import("@/lib/scenarioPortfolio").buildScenarioPortfolioSnapshot>
+  holdings: Holding[]
+  profile: InvestorProfile
+}) {
+  const trades = computeSuggestedTrades(snapshot, holdings)
+  const target = TARGET_ALLOCATION_BY_PROFILE[profile]
+
+  return (
+    <Card className="border-emerald-500/20 bg-emerald-500/[0.04]">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <ArrowLeftRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          Suggested rebalancing trades
+        </CardTitle>
+        <CardDescription>
+          Specific actions to bring your portfolio in line with your {profile} target ({target.stocks}% stocks / {target.funds}% funds / {target.cash}% cash).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {trades.length === 0 ? (
+          <p className="rounded-md border border-border bg-card p-4 text-sm text-muted-foreground">
+            Your portfolio is close to its target allocation — no significant rebalancing trades needed right now.
+          </p>
+        ) : (
+          trades.map((trade) => (
+            <div
+              key={trade.label}
+              className="flex items-start gap-3 rounded-md border border-border bg-card p-4"
+            >
+              <span
+                className={cn(
+                  "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide",
+                  trade.action === "sell"
+                    ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"
+                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400",
+                )}
+              >
+                {trade.action}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium leading-6 text-foreground">{trade.label}</p>
+              </div>
+            </div>
+          ))
+        )}
+        {snapshot.totalValueUsd <= 0 && (
+          <p className="text-sm text-muted-foreground">
+            Add holdings and cash to your portfolio so Clarity can generate specific trade amounts.
+          </p>
+        )}
+        <p className="pt-1 text-xs leading-relaxed text-muted-foreground">
+          Approximate figures based on your saved profile targets. Not investment advice — consult a financial advisor before making real trades.
+        </p>
+      </CardContent>
+    </Card>
+  )
 }
 
 export function ScenariosPage() {
@@ -840,6 +998,7 @@ export function ScenariosPage() {
         </Card>
 
         {simulation ? (
+          <>
           <Card>
             <CardHeader>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -879,6 +1038,9 @@ export function ScenariosPage() {
               </p>
             </CardContent>
           </Card>
+
+          <SuggestedTradesCard snapshot={snapshot} holdings={holdings} profile={profile} />
+          </>
         ) : null}
       </div>
 

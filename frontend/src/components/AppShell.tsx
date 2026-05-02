@@ -10,6 +10,7 @@ import {
   Menu,
   Search,
   Settings,
+  ShieldAlert,
   X,
 } from "lucide-react"
 import { ClarityIcon } from "@/components/ClarityLogo"
@@ -269,6 +270,11 @@ export function AppShell() {
               ) : null}
             </div>
           </header>
+
+          <div className="flex items-center justify-center gap-1.5 border-b border-amber-200/60 bg-amber-50/80 px-6 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-400">
+            <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Practice simulation only — not financial or legal advice. Prices sourced from Yahoo Finance and may be delayed.
+          </div>
 
           <main className="mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <Outlet />
