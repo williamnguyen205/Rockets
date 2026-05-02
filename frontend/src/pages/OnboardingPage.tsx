@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react"
-import { Link, useNavigate, useLocation } from "react-router-dom"
-import { ArrowRight } from "lucide-react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react"
 import { ClarityLogo } from "@/components/ClarityLogo"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   type DipReactionOption,
@@ -21,15 +22,64 @@ import { type InvestorProfile, usePortfolioStore } from "@/store/portfolio"
 type Step = 0 | 1 | 2 | 3 | 4
 
 function dipSummaryLabel(option: DipReactionOption) {
-  if (option === "calm") return "Mostly calm — likely to wait it out"
-  if (option === "worried") return "Pretty worried — uneasy, watching closely"
-  return "Would want out — sell to protect what's left"
+  if (option === "calm") return "Mostly calm, likely to wait it out"
+  if (option === "worried") return "Pretty worried, watching closely"
+  return "Would want out to protect what's left"
 }
 
 function postureDescription(profile: InvestorProfile) {
   const rest =
-    "We combine your timeline, goal, and comfort with volatility—no secret formulas, just sensible defaults you'll see on your dashboard. Scenarios and rebalancing tips will use this as a starting point."
+    "We combine your timeline, goal, and comfort with volatility. Scenarios and rebalancing tips will use this as a starting point."
   return { label: profile, rest }
+}
+
+function StepShell({
+  eyebrow,
+  title,
+  copy,
+  children,
+}: {
+  eyebrow: string
+  title: string
+  copy: string
+  children: ReactNode
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-5 shadow-panel sm:p-6">
+      <p className="text-xs font-semibold uppercase text-accent">{eyebrow}</p>
+      <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-normal text-foreground sm:text-4xl">
+        {title}
+      </h1>
+      <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">{copy}</p>
+      <div className="mt-6">{children}</div>
+    </section>
+  )
+}
+
+function ChoiceButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean
+  children: ReactNode
+  onClick: () => void
+}) {
+  return (
+    <button
+      className={cn(
+        "flex w-full items-center justify-between gap-4 rounded-md border px-4 py-3 text-left text-sm font-semibold transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground hover:border-accent hover:bg-muted/45",
+      )}
+      type="button"
+      onClick={onClick}
+    >
+      <span>{children}</span>
+      {active ? <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
+    </button>
+  )
 }
 
 export function OnboardingPage() {
@@ -80,236 +130,171 @@ export function OnboardingPage() {
   }
 
   const totalSteps = 5
-  const progressIndex = step
+  const progress = ((step + 1) / totalSteps) * 100
 
   return (
-    <div className="min-h-screen bg-[#f4eddf] px-5 py-4 text-[#080d21] sm:px-8">
-      <header className="mx-auto flex max-w-[720px] items-center justify-between border-b-2 border-[#080d21] pb-4">
-        <Link className="w-[200px] sm:w-[280px]" to="/" aria-label="Clarity home">
-          <ClarityLogo showTagline />
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="mx-auto flex h-16 max-w-[920px] items-center justify-between px-4 sm:px-6">
+        <Link className="text-primary" to="/" aria-label="Clarity home">
+          <ClarityLogo compact />
         </Link>
-        <span className="text-xs font-black uppercase text-[#687792]">
-          Step {Math.min(progressIndex + 1, totalSteps)} of {totalSteps}
+        <span className="text-xs font-semibold uppercase text-muted-foreground">
+          Step {step + 1} of {totalSteps}
         </span>
       </header>
 
-      <main className="mx-auto flex max-w-[720px] flex-col gap-8 py-10">
+      <main className="mx-auto grid max-w-[920px] gap-5 px-4 pb-10 pt-4 sm:px-6">
+        <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+        </div>
+
         {step === 0 ? (
-          <section className="space-y-5">
-            <h1 className="text-[clamp(2rem,5vw,3.25rem)] font-black leading-tight tracking-normal">
-              Let&apos;s learn how you think about money
-            </h1>
-            <p className="text-lg font-extrabold leading-relaxed text-[#34435c]">
-              A few questions help Clarity tune your dashboard. No finance exam, no jargon. You can revisit this anytime
-              from account settings later.
-            </p>
-            <button
-              className="mt-2 flex h-12 w-full max-w-md items-center justify-center gap-3 rounded-[14px] bg-[#080d21] px-5 text-base font-black uppercase text-white transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#96ff4c] sm:w-auto"
-              type="button"
-              onClick={() => setStep(1)}
-            >
+          <StepShell
+            eyebrow="Investor profile"
+            title="Set up a plan that matches your actual comfort level."
+            copy="A short questionnaire tunes your dashboard, target allocation, and scenario suggestions. No jargon test, just practical defaults you can change later."
+          >
+            <Button size="lg" type="button" onClick={() => setStep(1)}>
               Continue
-              <ArrowRight className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </section>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </StepShell>
         ) : null}
 
         {step === 1 ? (
-          <section className="space-y-6">
-            <div>
-              <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-black leading-tight">What are you investing for?</h1>
-              <p className="mt-3 text-base font-extrabold leading-relaxed text-[#34435c]">
-                Choose the goal that fits best right now. There&apos;s no wrong answer.
-              </p>
-            </div>
+          <StepShell
+            eyebrow="Goal"
+            title="What are you investing for?"
+            copy="Choose the goal that fits best right now. This gives the app context for risk and timeline tradeoffs."
+          >
             <div className="grid gap-3">
               {goalChoices.map((choice) => (
-                <button
+                <ChoiceButton
                   key={choice.value}
-                  className={cn(
-                    "rounded-[14px] border-2 px-4 py-4 text-left text-base font-black transition-colors",
-                    goal !== null && goal === choice.value
-                      ? "border-[#080d21] bg-[#9cff48] text-[#080d21] shadow-[4px_4px_0_#080d21]"
-                      : "border-[#d5deea] bg-white/80 hover:border-[#080d21]/60",
-                  )}
-                  type="button"
+                  active={goal === choice.value}
                   onClick={() => setGoal(choice.value)}
                 >
                   {choice.label}
-                </button>
+                </ChoiceButton>
               ))}
             </div>
             {goal === "Other" ? (
-              <label className="block space-y-2">
-                <span className="text-xs font-black uppercase text-[#080d21]">Your goal</span>
+              <label className="mt-4 block space-y-2">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Your goal</span>
                 <input
-                  className="h-12 w-full rounded-[14px] border-2 border-[#d5deea] bg-white px-4 text-base font-extrabold text-[#080d21] outline-none transition-colors focus:border-[#080d21] focus:ring-4 focus:ring-[#96ff4c]/30"
+                  className="h-11 w-full rounded-md border border-input bg-card px-3 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-ring/20"
                   placeholder="Describe your goal in plain words"
                   value={goalOther}
                   onChange={(event) => setGoalOther(event.target.value)}
                 />
               </label>
             ) : null}
-            <div className="flex flex-wrap gap-3">
-              <button
-                className="h-12 rounded-[14px] border-2 border-[#080d21] bg-transparent px-6 text-sm font-black uppercase text-[#080d21]"
-                type="button"
-                onClick={() => setStep(0)}
-              >
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button type="button" variant="ghost" onClick={() => setStep(0)}>
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Back
-              </button>
-              <button
-                className="flex h-12 items-center justify-center gap-2 rounded-[14px] bg-[#080d21] px-6 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!canAdvanceFromGoal()}
-                type="button"
-                onClick={() => setStep(2)}
-              >
+              </Button>
+              <Button disabled={!canAdvanceFromGoal()} type="button" onClick={() => setStep(2)}>
                 Continue
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
+              </Button>
             </div>
-          </section>
+          </StepShell>
         ) : null}
 
         {step === 2 ? (
-          <section className="space-y-6">
-            <div>
-              <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-black leading-tight">When will you need this money?</h1>
-              <p className="mt-3 text-base font-extrabold leading-relaxed text-[#34435c]">
-                Approximate timing is enough. It helps us suggest more assured paths for short horizons and growth ideas
-                for longer ones.
-              </p>
-            </div>
+          <StepShell
+            eyebrow="Timeline"
+            title="When will you need this money?"
+            copy="Approximate timing is enough. Short horizons need more stability; longer horizons can usually tolerate more movement."
+          >
             <div className="grid gap-3">
               {horizonChoices.map((choice) => (
-                <button
+                <ChoiceButton
                   key={choice.value}
-                  className={cn(
-                    "rounded-[14px] border-2 px-4 py-4 text-left text-base font-black transition-colors",
-                    horizon !== null && horizon === choice.value
-                      ? "border-[#080d21] bg-[#9cff48] text-[#080d21] shadow-[4px_4px_0_#080d21]"
-                      : "border-[#d5deea] bg-white/80 hover:border-[#080d21]/60",
-                  )}
-                  type="button"
+                  active={horizon === choice.value}
                   onClick={() => setHorizon(choice.value)}
                 >
                   {choice.label}
-                </button>
+                </ChoiceButton>
               ))}
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                className="h-12 rounded-[14px] border-2 border-[#080d21] bg-transparent px-6 text-sm font-black uppercase text-[#080d21]"
-                type="button"
-                onClick={() => setStep(1)}
-              >
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button type="button" variant="ghost" onClick={() => setStep(1)}>
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Back
-              </button>
-              <button
-                className="flex h-12 items-center justify-center gap-2 rounded-[14px] bg-[#080d21] px-6 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={horizon === null}
-                type="button"
-                onClick={() => setStep(3)}
-              >
+              </Button>
+              <Button disabled={horizon === null} type="button" onClick={() => setStep(3)}>
                 Continue
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
+              </Button>
             </div>
-          </section>
+          </StepShell>
         ) : null}
 
         {step === 3 ? (
-          <section className="space-y-6">
-            <div>
-              <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-black leading-tight">
-                How would you feel if your investments dropped about 15%?
-              </h1>
-              <p className="mt-3 text-base font-extrabold leading-relaxed text-[#34435c]">
-                Markets move. Your honest gut reaction helps us avoid strategies that would keep you up at night.
-              </p>
-            </div>
+          <StepShell
+            eyebrow="Risk tolerance"
+            title="If investments dropped about 15%, what would you do?"
+            copy="Your honest reaction helps Clarity avoid a portfolio you would abandon during normal market stress."
+          >
             <div className="grid gap-3">
               {dipChoices.map((choice) => (
-                <button
+                <ChoiceButton
                   key={choice.value}
-                  className={cn(
-                    "rounded-[14px] border-2 px-4 py-4 text-left text-sm font-extrabold leading-snug transition-colors sm:text-base",
-                    dipReaction !== null && dipReaction === choice.value
-                      ? "border-[#080d21] bg-[#9cff48] text-[#080d21] shadow-[4px_4px_0_#080d21]"
-                      : "border-[#d5deea] bg-white/80 hover:border-[#080d21]/60",
-                  )}
-                  type="button"
+                  active={dipReaction === choice.value}
                   onClick={() => setDipReaction(choice.value)}
                 >
                   {choice.label}
-                </button>
+                </ChoiceButton>
               ))}
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                className="h-12 rounded-[14px] border-2 border-[#080d21] bg-transparent px-6 text-sm font-black uppercase text-[#080d21]"
-                type="button"
-                onClick={() => setStep(2)}
-              >
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button type="button" variant="ghost" onClick={() => setStep(2)}>
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Back
-              </button>
-              <button
-                className="flex h-12 items-center justify-center gap-2 rounded-[14px] bg-[#080d21] px-6 text-sm font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={dipReaction === null}
-                type="button"
-                onClick={() => setStep(4)}
-              >
+              </Button>
+              <Button disabled={dipReaction === null} type="button" onClick={() => setStep(4)}>
                 Continue
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
+              </Button>
             </div>
-          </section>
+          </StepShell>
         ) : null}
 
         {step === 4 && goal !== null && horizon !== null && dipReaction !== null && profile !== null ? (
-          <section className="space-y-6">
-            <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-black leading-tight">Here&apos;s how we&apos;ll start with you</h1>
-            <div className="rounded-[18px] border-2 border-[#080d21] bg-white p-6 shadow-[6px_6px_0_#080d21]">
-              <dl className="grid gap-4 text-base font-extrabold text-[#34435c]">
-                <div>
-                  <dt className="text-xs font-black uppercase text-[#687792]">Goal</dt>
-                  <dd className="mt-1 text-[#080d21]">{displayGoal(goal, goalOther)}</dd>
+          <StepShell
+            eyebrow="Starting posture"
+            title="Here is how Clarity will start with you."
+            copy="This is a working profile, not a permanent label. You can retake the questionnaire from account settings."
+          >
+            <dl className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+              {[
+                ["Goal", displayGoal(goal, goalOther)],
+                ["Time horizon", horizon],
+                ["Market dip reaction", dipSummaryLabel(dipReaction)],
+                [
+                  "Profile",
+                  `${postureDescription(profile).label}. ${postureDescription(profile).rest}`,
+                ],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-card p-4">
+                  <dt className="text-xs font-semibold uppercase text-muted-foreground">{label}</dt>
+                  <dd className="mt-2 text-sm font-semibold leading-6 text-foreground">{value}</dd>
                 </div>
-                <div>
-                  <dt className="text-xs font-black uppercase text-[#687792]">Time horizon</dt>
-                  <dd className="mt-1 text-[#080d21]">{horizon}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-black uppercase text-[#687792]">If markets dipped ~15%</dt>
-                  <dd className="mt-1 text-[#080d21]">{dipSummaryLabel(dipReaction)}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-black uppercase text-[#687792]">Starting posture</dt>
-                  <dd className="mt-1 text-[#080d21]">
-                    <span className="font-black">{postureDescription(profile).label}.</span>{" "}
-                    {postureDescription(profile).rest}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                className="h-12 rounded-[14px] border-2 border-[#080d21] bg-transparent px-6 text-sm font-black uppercase text-[#080d21]"
-                type="button"
-                onClick={() => setStep(3)}
-              >
+              ))}
+            </dl>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button type="button" variant="ghost" onClick={() => setStep(3)}>
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 Back
-              </button>
-              <button
-                className="flex h-12 items-center justify-center gap-2 rounded-[14px] bg-[#080d21] px-6 text-sm font-black uppercase text-white"
-                type="button"
-                onClick={finish}
-              >
+              </Button>
+              <Button type="button" onClick={finish}>
                 Go to dashboard
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
+              </Button>
             </div>
-          </section>
+          </StepShell>
         ) : null}
       </main>
     </div>

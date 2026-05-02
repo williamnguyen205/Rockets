@@ -210,7 +210,7 @@ export function StocksPage() {
           <Search className="h-3.5 w-3.5" aria-hidden="true" />
           Live stock lookup
         </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Search any ticker.</h1>
+        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Research a ticker with context.</h1>
         <p className="text-sm leading-6 text-muted-foreground">
           Pull real market data from the FastAPI backend and inspect price, movement, volume, market cap, and recent history.
         </p>
@@ -222,7 +222,7 @@ export function StocksPage() {
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
-                className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm font-semibold uppercase text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30"
+                className="h-12 w-full rounded-md border border-input bg-card pl-10 pr-4 text-sm font-semibold uppercase text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-ring/20"
                 placeholder="AAPL"
                 value={tickerInput}
                 onChange={(event) => setTickerInput(event.target.value)}
@@ -297,19 +297,19 @@ export function StocksPage() {
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-md border border-border bg-card p-4">
                   <p className="text-xs font-medium text-muted-foreground">Market cap</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{formatCompact(quote.marketCap)}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-md border border-border bg-card p-4">
                   <p className="text-xs font-medium text-muted-foreground">Volume</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{formatCompact(quote.volume)}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-md border border-border bg-card p-4">
                   <p className="text-xs font-medium text-muted-foreground">Previous close</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{formatCurrency(quote.previousClose)}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-md border border-border bg-card p-4">
                   <p className="text-xs font-medium text-muted-foreground">Day range</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">
                     {formatCurrency(quote.dayLow)} - {formatCurrency(quote.dayHigh)}
@@ -318,25 +318,25 @@ export function StocksPage() {
               </div>
 
               <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,380px)]">
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-md border border-border bg-card p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-primary" aria-hidden="true" />
                     <p className="text-sm font-semibold text-foreground">Portfolio position</p>
                   </div>
                   <div className="space-y-2">
-                    <div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border bg-muted/55 px-3 py-3">
+                    <div className="flex min-w-0 items-center justify-between gap-4 rounded-md border border-border bg-muted/45 px-3 py-3">
                       <p className="text-sm font-medium text-muted-foreground">Shares owned</p>
                       <p className="shrink-0 whitespace-nowrap text-right text-xl font-semibold tabular-nums leading-none text-foreground">
                         {currentHolding ? currentHolding.shares.toFixed(2) : "0.00"}
                       </p>
                     </div>
-                    <div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border bg-muted/55 px-3 py-3">
+                    <div className="flex min-w-0 items-center justify-between gap-4 rounded-md border border-border bg-muted/45 px-3 py-3">
                       <p className="text-sm font-medium text-muted-foreground">Position value</p>
                       <p className="shrink-0 whitespace-nowrap text-right text-xl font-semibold tabular-nums leading-none text-foreground">
                         {currentHolding ? formatCurrency(getHoldingValue(currentHolding)) : "$0.00"}
                       </p>
                     </div>
-                    <div className="flex min-w-0 items-center justify-between gap-4 rounded-lg border border-border bg-muted/55 px-3 py-3">
+                    <div className="flex min-w-0 items-center justify-between gap-4 rounded-md border border-border bg-muted/45 px-3 py-3">
                       <p className="text-sm font-medium text-muted-foreground">Cash available</p>
                       <p className="shrink-0 whitespace-nowrap text-right text-xl font-semibold tabular-nums leading-none text-primary">
                         {formatCurrency(cashBalance)}
@@ -345,7 +345,7 @@ export function StocksPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-md border border-border bg-card p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <CircleDollarSign className="h-4 w-4 text-primary" aria-hidden="true" />
                     <p className="text-sm font-semibold text-foreground">Trade</p>
@@ -354,7 +354,7 @@ export function StocksPage() {
                     <label className="flex-1">
                       <span className="mb-1 block text-xs font-medium text-muted-foreground">Shares</span>
                       <input
-                        className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
+                        className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-ring/20"
                         min="0.01"
                         step="0.01"
                         type="number"
@@ -442,8 +442,8 @@ export function StocksPage() {
                   <AreaChart data={history} margin={{ left: 0, right: 8, top: 10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="stockLookup" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="5%" stopColor="#34a85a" stopOpacity={0.42} />
-                        <stop offset="95%" stopColor="#34a85a" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#0f766e" stopOpacity={0.32} />
+                        <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid stroke="rgba(8,13,33,0.1)" vertical={false} />
@@ -466,9 +466,9 @@ export function StocksPage() {
                     <Tooltip
                       contentStyle={{
                         background: "#ffffff",
-                        border: "2px solid #080d21",
-                        borderRadius: 16,
-                        color: "#080d21",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: 8,
+                        color: "hsl(var(--foreground))",
                       }}
                       formatter={(value) => [formatCurrency(Number(value)), priceLabel]}
                       labelFormatter={(value) => formatHistoryLabel(String(value), period)}
@@ -476,7 +476,7 @@ export function StocksPage() {
                     <Area
                       dataKey="close"
                       fill="url(#stockLookup)"
-                      stroke="#34a85a"
+                      stroke="#0f766e"
                       strokeWidth={2}
                       type="monotone"
                     />
@@ -485,7 +485,7 @@ export function StocksPage() {
               </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-card">
+              <div className="rounded-md border border-border bg-card">
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-primary" aria-hidden="true" />

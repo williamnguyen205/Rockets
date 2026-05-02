@@ -133,16 +133,16 @@ function getAllocation(holdings: Holding[], cashBalance: number): AllocationItem
 
   if (!total) {
     return [
-      { name: "Stocks", value: 0, color: "#34a85a" },
-      { name: "Mutual Funds", value: 0, color: "#4682b4" },
-      { name: "Cash", value: 0, color: "#6495ed" },
+      { name: "Stocks", value: 0, color: "#0f766e" },
+      { name: "Mutual Funds", value: 0, color: "#2563eb" },
+      { name: "Cash", value: 0, color: "#64748b" },
     ]
   }
 
   return [
-    { name: "Stocks", value: Math.round((stocks / total) * 100), color: "#34a85a" },
-    { name: "Mutual Funds", value: Math.round((funds / total) * 100), color: "#4682b4" },
-    { name: "Cash", value: Math.round((cashBalance / total) * 100), color: "#6495ed" },
+    { name: "Stocks", value: Math.round((stocks / total) * 100), color: "#0f766e" },
+    { name: "Mutual Funds", value: Math.round((funds / total) * 100), color: "#2563eb" },
+    { name: "Cash", value: Math.round((cashBalance / total) * 100), color: "#64748b" },
   ]
 }
 

@@ -7,13 +7,22 @@ import {
   Tooltip,
 } from "recharts"
 import { Link } from "react-router-dom"
-import { ArrowDownRight, ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react"
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  ChevronRight,
+  PieChart as PieChartIcon,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import {
   getAllocationDrift,
   getHoldingValue,
+  getPortfolioValue,
   TARGET_ALLOCATION_BY_PROFILE,
   type InvestorProfile,
   type RiskLevel,
@@ -56,7 +65,7 @@ function HealthRing({ score }: { score: number }) {
           cy="110"
           fill="none"
           r={radius}
-          stroke="rgba(8,13,33,0.1)"
+          stroke="hsl(var(--muted))"
           strokeWidth="12"
         />
         <circle
@@ -72,8 +81,8 @@ function HealthRing({ score }: { score: number }) {
         />
         <defs>
           <linearGradient id="healthGradient" x1="30" x2="190" y1="30" y2="190">
-            <stop stopColor="#34a85a" />
-            <stop offset="1" stopColor="#6495ed" />
+            <stop stopColor="#0f766e" />
+            <stop offset="1" stopColor="#1d4ed8" />
           </linearGradient>
         </defs>
       </svg>
@@ -118,6 +127,13 @@ const nextMoveByProfile: Record<InvestorProfile, string> = {
 export function DashboardPage() {
   const { healthScore, profile, timeline, goal, monthlyContribution, allocation, holdings, cashBalance } =
     usePortfolioStore()
+  const totalValue = getPortfolioValue(holdings, cashBalance)
+  const investedValue = totalValue - cashBalance
+  const weightedDayMove = holdings.reduce((total, holding) => {
+    const value = getHoldingValue(holding)
+    return total + value * (holding.change / 100)
+  }, 0)
+  const weightedDayMovePct = investedValue ? (weightedDayMove / investedValue) * 100 : 0
 
   const targetAllocation = TARGET_ALLOCATION_BY_PROFILE[profile]
   const drift = useMemo(
@@ -131,21 +147,21 @@ export function DashboardPage() {
         label: "Stocks",
         current: allocation.find((a) => a.name === "Stocks")?.value ?? 0,
         targetPct: targetAllocation.stocks,
-        color: "#34a85a",
+        color: "#0f766e",
         driftPp: drift.stocks,
       },
       {
         label: "Mutual Funds",
         current: allocation.find((a) => a.name === "Mutual Funds")?.value ?? 0,
         targetPct: targetAllocation.funds,
-        color: "#4682b4",
+        color: "#2563eb",
         driftPp: drift.funds,
       },
       {
         label: "Cash",
         current: allocation.find((a) => a.name === "Cash")?.value ?? 0,
         targetPct: targetAllocation.cash,
-        color: "#6495ed",
+        color: "#64748b",
         driftPp: drift.cash,
       },
     ],
@@ -153,36 +169,69 @@ export function DashboardPage() {
   )
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-3 text-center">
-        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-glow">
-          <Sparkles className="h-5 w-5" aria-hidden="true" />
-        </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Financial clarity, instantly.</h1>
-        <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground">
-          A calm command center for understanding your risk, allocation, and holdings without spreadsheet anxiety.
-        </p>
+    <div className="space-y-6">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="border-b border-border bg-muted/35 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Portfolio dashboard</p>
+                  <h1 className="mt-2 text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
+                    {formatCurrency(totalValue)}
+                  </h1>
+                </div>
+                <Badge variant={weightedDayMove >= 0 ? "low" : "high"}>
+                  {weightedDayMove >= 0 ? "+" : ""}
+                  {formatCurrency(weightedDayMove)} today
+                </Badge>
+              </div>
+            </div>
+            <div className="grid gap-px bg-border sm:grid-cols-3">
+              {[
+                { label: "Invested", value: formatCurrency(investedValue), icon: BarChart3 },
+                { label: "Cash", value: formatCurrency(cashBalance), icon: Wallet },
+                {
+                  label: "Day move",
+                  value: `${weightedDayMovePct >= 0 ? "+" : ""}${weightedDayMovePct.toFixed(2)}%`,
+                  icon: ArrowUpRight,
+                },
+              ].map((metric) => (
+                <div key={metric.label} className="bg-card p-5">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                    <metric.icon className="h-4 w-4 text-accent" aria-hidden="true" />
+                    {metric.label}
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold tabular-nums text-foreground">{metric.value}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Plan fit</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{profile}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{timeline} · {goal}</p>
+              </div>
+              <Badge variant="outline">{formatCurrency(monthlyContribution)}/mo</Badge>
+            </div>
+            <HealthRing score={healthScore} />
+          </CardContent>
+        </Card>
       </section>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-8">
-          <HealthRing score={healthScore} />
-          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[profile, timeline, goal, `${formatCurrency(monthlyContribution)}/mo`].map((chip) => (
-              <div
-                key={chip}
-                className="rounded-full border border-border/70 bg-muted/55 px-3 py-2 text-center text-xs font-medium text-muted-foreground"
-              >
-                {chip}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <Card>
-        <CardHeader>
-          <CardTitle>Your Allocation</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>Allocation</CardTitle>
+            <CardDescription>Current portfolio mix by asset type.</CardDescription>
+          </div>
+          <PieChartIcon className="h-5 w-5 text-accent" aria-hidden="true" />
         </CardHeader>
         <CardContent>
           <div className="grid items-center gap-5 sm:grid-cols-[1fr_0.9fr]">
@@ -195,9 +244,9 @@ export function DashboardPage() {
                     dataKey="value"
                     innerRadius={66}
                     outerRadius={92}
-                    paddingAngle={4}
-                    stroke="rgba(10,13,20,0.92)"
-                    strokeWidth={5}
+                    paddingAngle={0}
+                    stroke="none"
+                    strokeWidth={0}
                   >
                     {allocation.map((entry) => (
                       <Cell key={entry.name} fill={entry.color} />
@@ -211,7 +260,7 @@ export function DashboardPage() {
               {allocation.map((item) => (
                 <div
                   key={item.name}
-                  className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/55 px-4 py-3"
+                className="flex items-center justify-between rounded-md border border-border bg-muted/45 px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
                     <span
@@ -225,7 +274,7 @@ export function DashboardPage() {
               ))}
             </div>
           </div>
-          <div className="mt-5 rounded-lg border border-border/70 bg-muted/55 px-4 py-3">
+          <div className="mt-5 rounded-md border border-border bg-muted/45 px-4 py-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Cash available</span>
               <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
@@ -276,6 +325,7 @@ export function DashboardPage() {
           ))}
         </CardContent>
       </Card>
+      </section>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -291,10 +341,10 @@ export function DashboardPage() {
               <Link
                 key={holding.symbol}
                 aria-label={`View ${holding.symbol} stock details`}
-                className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-border/70 bg-muted/55 p-4 transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
+                className="grid grid-cols-[auto_1fr] gap-4 rounded-md border border-border bg-card p-4 transition-colors hover:border-accent hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
                 to={`/stocks?ticker=${encodeURIComponent(holding.symbol)}`}
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-card text-xs font-semibold text-foreground sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-muted text-xs font-semibold text-foreground sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
                   {holding.symbol}
                 </div>
                 <div>
@@ -337,6 +387,7 @@ export function DashboardPage() {
                     {holding.change}%
                   </div>
                   <Badge variant={riskVariant[holding.risk]}>{holding.risk} risk</Badge>
+                  <ChevronRight className="ml-2 hidden h-4 w-4 text-muted-foreground sm:block" aria-hidden="true" />
                 </div>
               </Link>
             )
@@ -344,7 +395,7 @@ export function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-primary/20 bg-secondary/70">
+      <Card className="border-accent/25 bg-secondary">
         <CardContent className="flex items-start gap-4 p-5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary bg-card text-primary">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />

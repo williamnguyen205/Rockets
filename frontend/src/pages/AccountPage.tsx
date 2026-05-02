@@ -96,7 +96,7 @@ function Toggle({
 }) {
   return (
     <button
-      className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted"
+      className="flex w-full items-center justify-between gap-4 rounded-md border border-border bg-card p-4 text-left transition-colors hover:bg-muted"
       type="button"
       onClick={onChange}
     >
@@ -278,7 +278,7 @@ export function AccountPage() {
           <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
           Account settings
         </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Manage your Clarity account.</h1>
+        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Account controls and preferences.</h1>
         <p className="text-sm leading-6 text-muted-foreground">
           Keep your profile, investing preferences, security, and notifications in one clean place.
         </p>
@@ -452,7 +452,7 @@ export function AccountPage() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"
+                className="flex items-center justify-between gap-4 rounded-md border border-border bg-card p-4"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/55 text-primary">
@@ -475,7 +475,7 @@ export function AccountPage() {
               </div>
             ))}
             {activeSecurityPanel === "password" ? (
-              <div className="grid gap-3 rounded-xl border border-border bg-muted/40 p-4 sm:grid-cols-3">
+              <div className="grid gap-3 rounded-md border border-border bg-muted/40 p-4 sm:grid-cols-3">
                 <Field label="Current password">
                   <TextInput
                     type="password"
@@ -508,7 +508,7 @@ export function AccountPage() {
               </div>
             ) : null}
             {activeSecurityPanel === "billing" ? (
-              <div className="grid gap-3 rounded-xl border border-border bg-muted/40 p-4 sm:grid-cols-2">
+              <div className="grid gap-3 rounded-md border border-border bg-muted/40 p-4 sm:grid-cols-2">
                 <Field label="Plan">
                   <SelectInput
                     value={billingPlan}
@@ -543,14 +543,14 @@ export function AccountPage() {
               </div>
             ) : null}
             {securityMessage ? (
-              <p className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary">
+              <p className="rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary">
                 {securityMessage}
               </p>
             ) : null}
           </CardContent>
         </Card>
 
-        <div className="sticky bottom-4 z-10 rounded-xl border border-border bg-card p-3 shadow-panel">
+        <div className="sticky bottom-4 z-10 rounded-lg border border-border bg-card p-3 shadow-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {saved ? (
