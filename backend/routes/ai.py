@@ -13,6 +13,8 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi4:14b")
 
 class LearnQuestionRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=800)
+    moduleTitle: str | None = Field(default=None, max_length=120)
+    lessonTitle: str | None = Field(default=None, max_length=120)
 
 
 class LearnAnswerResponse(BaseModel):
@@ -21,7 +23,20 @@ class LearnAnswerResponse(BaseModel):
     example: str
 
 
-def _build_learn_prompt(question: str) -> str:
+def _build_learn_prompt(
+    question: str,
+    module_title: str | None = None,
+    lesson_title: str | None = None,
+) -> str:
+    course_context = ""
+    if module_title or lesson_title:
+        course_context = f"""
+Course context:
+- Module: {module_title or "Not selected"}
+- Lesson: {lesson_title or "Not selected"}
+Use this context to keep the answer relevant to the current learning plan.
+""".strip()
+
     return f"""
 You are Clarity, a calm beginner-investor tutor inside a fintech learning app.
 
@@ -33,6 +48,8 @@ Rules:
 - Do not provide personalized financial advice.
 - If the user asks for stock picks, price predictions, or direct advice, redirect to general principles, risks, diversification, time horizon, and fees.
 - Return only valid JSON with exactly these string keys: "answer", "takeaway", "example".
+
+{course_context}
 
 User question:
 {question}
@@ -60,10 +77,14 @@ def _fallback_parse_response(content: str) -> LearnAnswerResponse:
     )
 
 
-async def _ask_ollama(question: str) -> LearnAnswerResponse:
+async def _ask_ollama(
+    question: str,
+    module_title: str | None = None,
+    lesson_title: str | None = None,
+) -> LearnAnswerResponse:
     payload = {
         "model": OLLAMA_MODEL,
-        "prompt": _build_learn_prompt(question),
+        "prompt": _build_learn_prompt(question, module_title, lesson_title),
         "stream": False,
         "format": "json",
         "options": {
@@ -132,4 +153,4 @@ async def ask_learn_question(request: LearnQuestionRequest) -> LearnAnswerRespon
     if not question:
         raise HTTPException(status_code=422, detail="Question cannot be empty.")
 
-    return await _ask_ollama(question)
+    return await _ask_ollama(question, request.moduleTitle, request.lessonTitle)

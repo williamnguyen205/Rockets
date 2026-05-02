@@ -19,6 +19,11 @@ export type LearnAnswer = {
   example: string
 }
 
+export type LearnQuestionContext = {
+  moduleTitle?: string
+  lessonTitle?: string
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -47,12 +52,12 @@ export async function getStockHistory(ticker: string, period = "1mo") {
   )
 }
 
-export async function askLearnQuestion(question: string) {
+export async function askLearnQuestion(question: string, context?: LearnQuestionContext) {
   return fetchJson<LearnAnswer>("/ai/learn", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, ...context }),
   })
 }
