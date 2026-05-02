@@ -44,6 +44,61 @@ export type AllocationDrift = {
   totalAbs: number
 }
 
+const HIGH_VOLATILITY_STOCKS = new Set([
+  "AMD",
+  "COIN",
+  "MARA",
+  "MSTR",
+  "NVDA",
+  "PLTR",
+  "RIVN",
+  "SMCI",
+  "TSLA",
+])
+
+const LOWER_VOLATILITY_STOCKS = new Set([
+  "BRK.B",
+  "BRK-B",
+  "COST",
+  "JNJ",
+  "KO",
+  "PG",
+  "T",
+  "VZ",
+  "WMT",
+])
+
+export function estimateHoldingRisk({
+  category,
+  change,
+  symbol,
+}: {
+  category: HoldingCategory
+  change: number
+  symbol: string
+}): RiskLevel {
+  if (category === "fund") return "Low"
+
+  const normalizedSymbol = symbol.trim().toUpperCase()
+  const absoluteMove = Math.abs(change)
+
+  if (HIGH_VOLATILITY_STOCKS.has(normalizedSymbol) || absoluteMove >= 3) return "High"
+  if (LOWER_VOLATILITY_STOCKS.has(normalizedSymbol) && absoluteMove < 2) return "Low"
+  if (absoluteMove >= 1.5) return "Medium"
+  return "Medium"
+}
+
+function normalizeHoldingRisk(holding: Holding): Holding {
+  return {
+    ...holding,
+    risk: estimateHoldingRisk({
+      category: holding.category,
+      change: holding.change,
+      symbol: holding.symbol,
+    }),
+  }
+}
+
 export function getAllocationDrift(
   current: AllocationItem[],
   target: AllocationTarget,
@@ -274,7 +329,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         price,
         change,
         category = "stock",
-        risk = "Medium",
+        risk,
         expenseRatio,
         diversification,
         plainLanguageRisk,
@@ -282,6 +337,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       }) => {
         const normalizedSymbol = symbol.trim().toUpperCase()
         const tradeValue = shares * price
+        const estimatedRisk = risk ?? estimateHoldingRisk({ category, change, symbol: normalizedSymbol })
 
         if (!normalizedSymbol || shares <= 0 || price <= 0) {
           return { ok: false, message: "Enter a valid share amount." }
@@ -308,7 +364,7 @@ export const usePortfolioStore = create<PortfolioState>()(
                   lastPrice: price,
                   change,
                   category,
-                  risk,
+                  risk: estimatedRisk,
                   expenseRatio,
                   diversification,
                   plainLanguageRisk,
@@ -324,7 +380,7 @@ export const usePortfolioStore = create<PortfolioState>()(
                   averageCost: price,
                   lastPrice: price,
                   change,
-                  risk,
+                  risk: estimatedRisk,
                   category,
                   expenseRatio,
                   diversification,
@@ -417,7 +473,7 @@ export const usePortfolioStore = create<PortfolioState>()(
             averageCost: 170,
             lastPrice: 188,
             change: -1.2,
-            risk: "Medium",
+            risk: estimateHoldingRisk({ category: "stock", change: -1.2, symbol: "AAPL" }),
             category: "stock",
             dataSource: "Demo holding with live-style quote assumptions",
           },
@@ -428,7 +484,7 @@ export const usePortfolioStore = create<PortfolioState>()(
             averageCost: 780,
             lastPrice: 910,
             change: -2.6,
-            risk: "High",
+            risk: estimateHoldingRisk({ category: "stock", change: -2.6, symbol: "NVDA" }),
             category: "stock",
             dataSource: "Demo holding with live-style quote assumptions",
           },
@@ -439,7 +495,7 @@ export const usePortfolioStore = create<PortfolioState>()(
             averageCost: 238,
             lastPrice: 252,
             change: -0.4,
-            risk: "Medium",
+            risk: "Low",
             category: "fund",
             expenseRatio: 0.03,
             diversification: "Thousands of U.S. companies in one fund",
@@ -484,6 +540,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return
+        state.holdings = state.holdings.map(normalizeHoldingRisk)
         state.healthScore = getHealthScore(state)
         state.allocation = getAllocation(state.holdings, state.cashBalance)
       },

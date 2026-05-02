@@ -138,9 +138,9 @@ const riskVariant: Record<RiskLevel, "low" | "medium" | "high"> = {
 }
 
 const defaultRiskExplanation: Record<RiskLevel, string> = {
-  Low: "Prices move slowly and losses are typically limited. Best for preserving capital with minimal volatility.",
-  Medium: "Moderate price swings are expected — a balance between growth potential and day-to-day stability.",
-  High: "Large price swings are common. High growth ceiling, but losses can also be steep and sudden.",
+  Low: "Lower expected volatility in this prototype. Diversified funds, ETFs, mutual funds, and bond-style holdings are treated as low risk.",
+  Medium: "Moderate expected volatility. This stock can move day to day, but it is not flagged as one of the most volatile names.",
+  High: "Higher expected volatility. This stock is more likely to have large price swings, so losses can be steeper and faster.",
 }
 
 function AllocationTooltip({
