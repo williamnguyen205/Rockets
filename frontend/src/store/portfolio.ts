@@ -5,6 +5,110 @@ export type HoldingCategory = "stock" | "fund"
 export type InvestorProfile = "Conservative" | "Balanced" | "Growth" | "Aggressive"
 export type InvestmentTimeline = "1-3 years" | "3-5 years" | "5-10 years" | "10+ years"
 
+export type OnboardingGoalPreset = "retirement" | "house" | "emergency" | "wealth" | "other"
+export type OnboardingTimeHorizon =
+  | "Less than 2 years"
+  | "2-5 years"
+  | "5-10 years"
+  | "10+ years"
+export type DipReactionId = "calm" | "worried" | "panic"
+
+const ONBOARDING_STORAGE_KEY = "clarity-onboarding-v1"
+
+export const GOAL_PRESET_LABELS: Record<OnboardingGoalPreset, string> = {
+  retirement: "Retirement",
+  house: "House",
+  emergency: "Emergency Fund",
+  wealth: "Wealth Growth",
+  other: "Other",
+}
+
+export const DIP_REACTION_CHOICES: Array<{ id: DipReactionId; label: string }> = [
+  {
+    id: "calm",
+    label: "Mostly calm - I know dips happen; I'd likely wait it out.",
+  },
+  {
+    id: "worried",
+    label: "Pretty worried - I'd feel uneasy and watch things closely.",
+  },
+  {
+    id: "panic",
+    label: "I'd want out - A big drop would make me want to sell and protect what's left.",
+  },
+]
+
+type StoredOnboarding = {
+  complete: boolean
+  goalPreset: OnboardingGoalPreset
+  customGoalText: string
+  timeHorizon: OnboardingTimeHorizon
+  dipReaction: DipReactionId
+}
+
+function loadStoredOnboarding(): StoredOnboarding | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = window.localStorage.getItem(ONBOARDING_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as StoredOnboarding
+    if (typeof parsed?.complete !== "boolean") return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function saveStoredOnboarding(data: StoredOnboarding) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(data))
+}
+
+export function mapOnboardingHorizonToTimeline(horizon: OnboardingTimeHorizon): InvestmentTimeline {
+  const table: Record<OnboardingTimeHorizon, InvestmentTimeline> = {
+    "Less than 2 years": "1-3 years",
+    "2-5 years": "3-5 years",
+    "5-10 years": "5-10 years",
+    "10+ years": "10+ years",
+  }
+  return table[horizon]
+}
+
+export function deriveProfileFromOnboarding({
+  goalPreset,
+  timeHorizon,
+  dipReaction,
+}: {
+  goalPreset: OnboardingGoalPreset
+  timeHorizon: OnboardingTimeHorizon
+  dipReaction: DipReactionId
+}): InvestorProfile {
+  if (dipReaction === "panic") return "Conservative"
+  if (goalPreset === "emergency") {
+    return timeHorizon === "Less than 2 years" || timeHorizon === "2-5 years" ? "Conservative" : "Balanced"
+  }
+  if (dipReaction === "worried") {
+    if (timeHorizon === "Less than 2 years" || timeHorizon === "2-5 years") return "Conservative"
+    return "Balanced"
+  }
+  if (timeHorizon === "Less than 2 years") return "Conservative"
+  if (timeHorizon === "2-5 years") {
+    return goalPreset === "wealth" ? "Growth" : "Balanced"
+  }
+  if (timeHorizon === "5-10 years") {
+    if (goalPreset === "wealth" || goalPreset === "retirement") return "Growth"
+    return "Balanced"
+  }
+  if (goalPreset === "wealth") return "Aggressive"
+  if (goalPreset === "retirement") return "Growth"
+  return "Growth"
+}
+
+export function getGoalDisplayLabel(goalPreset: OnboardingGoalPreset, customGoalText: string) {
+  if (goalPreset === "other" && customGoalText.trim()) return customGoalText.trim()
+  return GOAL_PRESET_LABELS[goalPreset]
+}
+
 export type Holding = {
   symbol: string
   name: string
@@ -32,6 +136,18 @@ type PortfolioState = {
   cashBalance: number
   allocation: AllocationItem[]
   holdings: Holding[]
+  onboardingComplete: boolean
+  onboardingGoalPreset: OnboardingGoalPreset
+  onboardingCustomGoalText: string
+  onboardingTimeHorizon: OnboardingTimeHorizon
+  onboardingDipReaction: DipReactionId
+  completeOnboarding: (answers: {
+    goalPreset: OnboardingGoalPreset
+    customGoalText: string
+    timeHorizon: OnboardingTimeHorizon
+    dipReaction: DipReactionId
+  }) => void
+  markOnboardingIncomplete: () => void
   updateProfileSettings: (settings: {
     profile: InvestorProfile
     timeline: InvestmentTimeline
@@ -160,19 +276,92 @@ const initialProfile: InvestorProfile = "Conservative"
 const initialTimeline: InvestmentTimeline = "5-10 years"
 const initialMonthlyContribution = 650
 
+const storedOnboarding = loadStoredOnboarding()
+
+const baselineOnboarding: StoredOnboarding = {
+  complete: false,
+  goalPreset: "wealth",
+  customGoalText: "",
+  timeHorizon: "5-10 years",
+  dipReaction: "worried",
+}
+
+const resolvedOnboarding = storedOnboarding ?? baselineOnboarding
+
+const initialOnboardingProfile = deriveProfileFromOnboarding({
+  goalPreset: resolvedOnboarding.goalPreset,
+  timeHorizon: resolvedOnboarding.timeHorizon,
+  dipReaction: resolvedOnboarding.dipReaction,
+})
+
+const initialProfileResolved = resolvedOnboarding.complete
+  ? initialOnboardingProfile
+  : initialProfile
+
+const initialTimelineResolved = resolvedOnboarding.complete
+  ? mapOnboardingHorizonToTimeline(resolvedOnboarding.timeHorizon)
+  : initialTimeline
+
+const initialGoalResolved = resolvedOnboarding.complete
+  ? getGoalDisplayLabel(resolvedOnboarding.goalPreset, resolvedOnboarding.customGoalText)
+  : "Wealth Growth"
+
 export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   healthScore: getHealthScore({
-    profile: initialProfile,
-    timeline: initialTimeline,
+    profile: initialProfileResolved,
+    timeline: initialTimelineResolved,
     monthlyContribution: initialMonthlyContribution,
   }),
-  profile: initialProfile,
-  timeline: initialTimeline,
-  goal: "Wealth Growth",
+  profile: initialProfileResolved,
+  timeline: initialTimelineResolved,
+  goal: initialGoalResolved,
   monthlyContribution: initialMonthlyContribution,
   cashBalance: initialCashBalance,
   allocation: getAllocation(initialHoldings, initialCashBalance),
   holdings: initialHoldings,
+  onboardingComplete: resolvedOnboarding.complete,
+  onboardingGoalPreset: resolvedOnboarding.goalPreset,
+  onboardingCustomGoalText: resolvedOnboarding.customGoalText,
+  onboardingTimeHorizon: resolvedOnboarding.timeHorizon,
+  onboardingDipReaction: resolvedOnboarding.dipReaction,
+  completeOnboarding: ({ goalPreset, customGoalText, timeHorizon, dipReaction }) => {
+    const profile = deriveProfileFromOnboarding({ goalPreset, timeHorizon, dipReaction })
+    const timeline = mapOnboardingHorizonToTimeline(timeHorizon)
+    const goal = getGoalDisplayLabel(goalPreset, customGoalText)
+    const monthlyContribution = get().monthlyContribution
+
+    const payload: StoredOnboarding = {
+      complete: true,
+      goalPreset,
+      customGoalText,
+      timeHorizon,
+      dipReaction,
+    }
+    saveStoredOnboarding(payload)
+
+    set({
+      onboardingComplete: true,
+      onboardingGoalPreset: goalPreset,
+      onboardingCustomGoalText: customGoalText,
+      onboardingTimeHorizon: timeHorizon,
+      onboardingDipReaction: dipReaction,
+      profile,
+      timeline,
+      goal,
+      healthScore: getHealthScore({ profile, timeline, monthlyContribution }),
+    })
+  },
+  markOnboardingIncomplete: () => {
+    const state = get()
+    saveStoredOnboarding({
+      complete: false,
+      goalPreset: state.onboardingGoalPreset,
+      customGoalText: state.onboardingCustomGoalText,
+      timeHorizon: state.onboardingTimeHorizon,
+      dipReaction: state.onboardingDipReaction,
+    })
+    set({ onboardingComplete: false })
+  },
   updateProfileSettings: ({ profile, timeline, monthlyContribution }) => {
     const normalizedContribution = Math.max(0, monthlyContribution)
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Bell,
   Check,
@@ -8,6 +9,7 @@ import {
   Moon,
   Shield,
   SlidersHorizontal,
+  Target,
   UserRound,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -124,7 +126,9 @@ function Toggle({
 }
 
 export function AccountPage() {
-  const { profile, timeline, monthlyContribution, updateProfileSettings } = usePortfolioStore()
+  const navigate = useNavigate()
+  const { profile, timeline, monthlyContribution, updateProfileSettings, markOnboardingIncomplete } =
+    usePortfolioStore()
   const initialForm: AccountForm = {
     fullName: "Clarity User",
     email: "clarity@example.com",
@@ -204,12 +208,37 @@ export function AccountPage() {
       </Card>
 
       <form className="space-y-8" onSubmit={handleSubmit}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserRound className="h-5 w-5 text-primary" aria-hidden="true" />
-              Profile
-            </CardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" aria-hidden="true" />
+            Investing posture
+          </CardTitle>
+          <CardDescription>
+            Revisit the short questionnaire if your goal, timeline, or comfort with volatility has changed. Your answers
+            tune the dashboard and future scenario suggestions—no jargon required.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              markOnboardingIncomplete()
+              navigate("/onboarding", { state: { retake: true } })
+            }}
+          >
+            Retake questionnaire
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserRound className="h-5 w-5 text-primary" aria-hidden="true" />
+            Profile
+          </CardTitle>
             <CardDescription>These details personalize recommendations throughout Clarity.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">

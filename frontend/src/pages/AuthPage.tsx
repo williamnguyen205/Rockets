@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight, LockKeyhole, Mail } from "lucide-react"
 import { ClarityLogo } from "@/components/ClarityLogo"
 import { cn } from "@/lib/utils"
+import { usePortfolioStore } from "@/store/portfolio"
 
 type AuthMode = "create" | "login"
 
@@ -100,10 +101,11 @@ function MarketPreview() {
 export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("create")
   const navigate = useNavigate()
+  const onboardingComplete = usePortfolioStore((state) => state.onboardingComplete)
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    navigate("/dashboard")
+    navigate(onboardingComplete ? "/dashboard" : "/onboarding")
   }
 
   return (

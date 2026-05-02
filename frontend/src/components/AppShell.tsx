@@ -1,8 +1,9 @@
-import { useEffect } from "react"
-import { Link, NavLink, Outlet } from "react-router-dom"
+import { useEffect, type ReactNode } from "react"
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { LogOut } from "lucide-react"
 import { ClarityIcon } from "@/components/ClarityLogo"
 import { cn } from "@/lib/utils"
+import { usePortfolioStore } from "@/store/portfolio"
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
@@ -19,6 +20,22 @@ function shouldUseDarkTheme() {
   if (savedTheme === "light") return false
 
   return window.matchMedia("(prefers-color-scheme: dark)").matches
+}
+
+function OnboardingGate({ children }: { children: ReactNode }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const onboardingComplete = usePortfolioStore((state) => state.onboardingComplete)
+
+  useEffect(() => {
+    if (!onboardingComplete) {
+      navigate("/onboarding", { replace: true, state: { from: location.pathname } })
+    }
+  }, [onboardingComplete, navigate, location.pathname])
+
+  if (!onboardingComplete) return null
+
+  return children
 }
 
 export function AppShell() {
@@ -83,7 +100,9 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto w-full max-w-[820px] px-5 pb-20 pt-[112px]">
-        <Outlet />
+        <OnboardingGate>
+          <Outlet />
+        </OnboardingGate>
       </main>
     </div>
   )
