@@ -103,7 +103,7 @@ export function AuthPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    navigate("/dashboard")
+    navigate("/onboarding")
   }
 
   return (
