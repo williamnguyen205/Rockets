@@ -1,6 +1,6 @@
-# Clarity Frontend
+# Clarity frontend
 
-Vite + React + TypeScript frontend for Clarity.
+Vite + React + TypeScript SPA for Clarity.
 
 ## Run
 
@@ -9,95 +9,35 @@ npm install
 npm run dev
 ```
 
-The Stocks page calls the FastAPI backend at `http://127.0.0.1:8000` by default.
-The Learn page AI tutor also calls the same backend, which then talks to local Ollama.
+## Environment
 
-To use a different backend URL, create a `.env.local` file:
+- **API:** Defaults to `http://127.0.0.1:8000`. Override with `frontend/.env.local`:
 
-```bash
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
+  ```bash
+  VITE_API_BASE_URL=http://127.0.0.1:8000
+  ```
 
-## Pages
+- **Tutor:** Uses `POST /ai/learn` on the same base URL; the backend may call local Ollama.
 
-- Dashboard
-- Stocks
-- Scenarios
-- Learn
-- Account via avatar
+## Routes
 
----
+| Path | Purpose |
+|------|---------|
+| `/`, `/login`, `/auth`, `/create` | Auth (session in `localStorage`) |
+| `/onboarding` | Guided setup (gated until complete) |
+| `/dashboard` | Portfolio summary, allocation, holdings |
+| `/stocks` | Ticker lookup (FastAPI + yfinance) |
+| `/scenarios` | What-if portfolio scenarios |
+| `/learn` | Lessons + AI tutor context |
+| `/account` | Settings; can restart onboarding |
 
-# Vite Notes
+Authenticated layout: **`RequireAuth` → `OnboardingGate` → `AppShell`** (sidebar / mobile nav + tutor).
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## State
 
-Currently, two official plugins are available:
+- **Session:** `frontend/src/lib/session.ts`
+- **Portfolio + onboarding:** Zustand + `persist`, storage key `clarity-portfolio-v2` in `src/store/portfolio.ts`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Docs
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Repo overview and API list: **`../README.md`**.

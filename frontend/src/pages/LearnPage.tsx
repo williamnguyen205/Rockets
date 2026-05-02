@@ -9,7 +9,7 @@ import {
   GraduationCap,
 } from "lucide-react"
 import { ClarityChatBlock } from "@/components/ClarityChatBlock"
-import { useClarityTutor } from "@/components/ClarityTutor"
+import { useClarityTutor } from "@/components/ClarityTutorContext"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
