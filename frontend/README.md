@@ -17,7 +17,7 @@ npm run dev
   VITE_API_BASE_URL=http://127.0.0.1:8000
   ```
 
-- **Tutor:** Uses `POST /ai/learn` on the same base URL; the backend may call local Ollama.
+- **Tutor:** Uses `POST /ai/learn` on the same base URL; the backend calls local Ollama with **`gemma4:e4b`** by default (configurable as `OLLAMA_MODEL` on the server).
 
 ## Routes
 

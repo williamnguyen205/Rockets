@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi4:14b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e4b")
 
 
 class LearnQuestionRequest(BaseModel):
