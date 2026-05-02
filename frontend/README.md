@@ -10,6 +10,7 @@ npm run dev
 ```
 
 The Stocks page calls the FastAPI backend at `http://127.0.0.1:8000` by default.
+The Learn page AI tutor also calls the same backend, which then talks to local Ollama.
 
 To use a different backend URL, create a `.env.local` file:
 

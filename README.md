@@ -14,6 +14,7 @@ clarity/
       lib/             Shared frontend utilities
   backend/             FastAPI backend
     main.py            FastAPI app, CORS, router registration
+    routes/ai.py       Ollama-powered Learn tab tutor endpoint
     routes/stocks.py   Stock quote, history, and batch endpoints
     requirements.txt   Python dependencies
   package.json         Root scripts for frontend/backend tasks
@@ -29,6 +30,7 @@ clarity/
 - Zustand
 - Recharts
 - FastAPI
+- Ollama
 - yfinance
 
 ## Frontend Setup
@@ -51,7 +53,14 @@ uvicorn main:app --reload
 
 The backend runs on `http://127.0.0.1:8000`.
 
-To use the frontend stock lookup page, run the backend and frontend at the same time:
+For AI tutor responses, install and start Ollama:
+
+```bash
+ollama pull phi4:14b
+ollama serve
+```
+
+To use the frontend stock lookup and AI tutor pages, run the backend and frontend at the same time:
 
 ```bash
 # terminal 1
@@ -80,6 +89,7 @@ npm run lint           # lint the frontend
 
 ```txt
 GET /health
+POST /ai/learn
 GET /stock/{ticker}
 GET /stock/{ticker}/history?period=1mo
 GET /stocks/batch?tickers=AAPL,GOOGL,TSLA
@@ -89,6 +99,9 @@ Example:
 
 ```bash
 curl http://127.0.0.1:8000/stock/AAPL
+curl -X POST http://127.0.0.1:8000/ai/learn \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What is diversification?"}'
 ```
 
 ## Development Notes
@@ -98,3 +111,4 @@ curl http://127.0.0.1:8000/stock/AAPL
 - Shared types can eventually live in a `shared/` folder if both frontend and backend need them.
 - Replace frontend mock data in `frontend/src/store/portfolio.ts` with API calls when you connect the app to the backend.
 - The stock lookup page calls `http://127.0.0.1:8000` by default. Override with `VITE_API_BASE_URL` if needed.
+- The Learn tab AI tutor uses local Ollama by default: `OLLAMA_BASE_URL=http://127.0.0.1:11434`, `OLLAMA_MODEL=phi4:14b`.
