@@ -108,6 +108,10 @@ type PortfolioState = {
   loadSamplePortfolio: () => TradeResult
 }
 
+function roundCash(value: number) {
+  return Math.round(value * 100) / 100
+}
+
 function getHoldingValue(holding: Holding) {
   return holding.shares * holding.lastPrice
 }
@@ -257,7 +261,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         })
       },
       setCashBalance: (amount) => {
-        const cashBalance = Math.max(0, amount)
+        const cashBalance = roundCash(Math.max(0, amount))
         set((state) => ({
           cashBalance,
           allocation: getAllocation(state.holdings, cashBalance),
@@ -329,7 +333,7 @@ export const usePortfolioStore = create<PortfolioState>()(
                 },
               ]
 
-          const cashBalance = state.cashBalance - tradeValue
+          const cashBalance = roundCash(state.cashBalance - tradeValue)
 
           return {
             cashBalance,
@@ -356,7 +360,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         }
 
         set((state) => {
-          const cashBalance = state.cashBalance + shares * price
+          const cashBalance = roundCash(state.cashBalance + shares * price)
           const holdings = state.holdings
             .map((item) => {
               if (item.symbol !== normalizedSymbol) return item
@@ -388,7 +392,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         }
 
         set((state) => {
-          const cashBalance = state.cashBalance + normalizedAmount
+          const cashBalance = roundCash(state.cashBalance + normalizedAmount)
           return {
             cashBalance,
             allocation: getAllocation(state.holdings, cashBalance),
