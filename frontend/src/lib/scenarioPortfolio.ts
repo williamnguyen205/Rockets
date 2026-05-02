@@ -1,6 +1,9 @@
 import {
+  getAllocationDrift,
   getHoldingValue,
   getPortfolioValue,
+  TARGET_ALLOCATION_BY_PROFILE,
+  type AllocationItem,
   type Holding,
   type InvestmentTimeline,
   type InvestorProfile,
@@ -99,6 +102,19 @@ function isShortHorizon(timeline: InvestmentTimeline) {
   return timeline === "1-3 years" || timeline === "3-5 years"
 }
 
+function snapshotToAllocationItems(s: ScenarioPortfolioSnapshot): AllocationItem[] {
+  return [
+    { name: "Stocks", value: s.stocksPct, color: "#34a85a" },
+    { name: "Mutual Funds", value: s.fundsPct, color: "#4682b4" },
+    { name: "Cash", value: s.cashPct, color: "#6495ed" },
+  ]
+}
+
+function formatPp(driftPp: number) {
+  const rounded = Math.round(driftPp)
+  return rounded > 0 ? `+${rounded}` : `${rounded}`
+}
+
 export function suggestRebalancingStrategy(
   scenarioId: ScenarioId,
   s: ScenarioPortfolioSnapshot,
@@ -114,20 +130,35 @@ export function suggestRebalancingStrategy(
   }
 
   const { stocksPct, fundsPct, cashPct, profile, timeline, topHoldings } = s
+  const target = TARGET_ALLOCATION_BY_PROFILE[profile]
+  const drift = getAllocationDrift(snapshotToAllocationItems(s), target)
+
   const shortHorizon = isShortHorizon(timeline)
-  const stockHeavy = stocksPct >= 42
-  const cashHeavy = cashPct >= 28
-  const fundHeavy = fundsPct >= 35
+  const stockOverweight = drift.stocks > 8
+  const cashOverweight = drift.cash > 5
+  const fundOverweight = drift.funds > 8
+  const fundUnderweight = drift.funds < -8
+
+  const targetVsActualIntro = `For your ${profile} plan, targets are ${target.stocks}% stocks, ${target.funds}% mutual funds, and ${target.cash}% cash. Right now you're at ${stocksPct}% / ${fundsPct}% / ${cashPct}%.`
+
+  const driftDetail = `Stocks are ${formatPp(drift.stocks)}pp from target, funds ${formatPp(drift.funds)}pp, cash ${formatPp(drift.cash)}pp.`
+
+  const comparisonRationale = `Compared with your saved ${profile} target (${target.stocks}/${target.funds}/${target.cash} stocks/funds/cash), today you sit at ${stocksPct}/${fundsPct}/${cashPct}.`
 
   if (scenarioId === "market_drop_20") {
-    const bullets: string[] = []
-    if (shortHorizon && stockHeavy) {
+    const bullets: string[] = [targetVsActualIntro]
+    if (stockOverweight) {
+      bullets.push(
+        `You're about ${formatPp(drift.stocks)}pp above your stock target (${target.stocks}%)—after a ~20% drop, that gap is worth revisiting before you need the money.`,
+      )
+    }
+    if (shortHorizon && stockOverweight) {
       bullets.push(
         "Take a breath before changing anything large—big drops feel scary, but rushing to sell everything often locks in losses.",
         "Consider gradually moving a modest slice of stock money into your steadier mutual fund slice so your near-term needs feel less tied to daily price swings.",
         "Keep enough cash on hand for upcoming expenses so you are not forced to sell at a bad time.",
       )
-    } else if (!shortHorizon && stockHeavy) {
+    } else if (!shortHorizon && stockOverweight) {
       bullets.push(
         "With more years ahead, many people stay mostly invested through a 20% dip and rely on time for recovery—check that your mix still matches how much drama you can stomach.",
         "If one stock is a huge slice of your total, think about spreading that risk across more holdings over time (without trying to time the exact bottom).",
@@ -135,7 +166,7 @@ export function suggestRebalancingStrategy(
       )
     } else {
       bullets.push(
-        "Your mix already leans steadier—focus on not making sudden, all-or-nothing moves.",
+        "Relative to your targets, you're not heavily overweight stocks—focus on not making sudden, all-or-nothing moves.",
         "Re-read your timeline: if you still have years, small, steady contributions often matter more than reacting to one bad month.",
         "If prices fall, use it as a reminder to check fees and whether you are diversified—not as a panic button.",
       )
@@ -148,22 +179,23 @@ export function suggestRebalancingStrategy(
     return {
       bullets,
       rationale:
-        shortHorizon && stockHeavy
-          ? "Closer to when you may need the money, we favor dialing back how much rides on volatile stocks after a big drop."
-          : "We looked at how much of your money is in stocks versus steadier funds and cash, plus how long you said you can wait.",
+        shortHorizon && stockOverweight
+          ? `${comparisonRationale} Closer to when you may need the money, and you're above target on stocks, we favor dialing back volatile equity toward your steadier fund slice after a big drop. ${driftDetail}`
+          : `${comparisonRationale} We weighed your timeline and how far each bucket sits from that guide—not a prediction of the future. ${driftDetail}`,
     }
   }
 
   if (scenarioId === "inflation_high") {
-    const bullets: string[] = []
-    if (cashHeavy) {
+    const bullets: string[] = [targetVsActualIntro]
+    if (cashOverweight) {
       bullets.push(
-        "Cash feels safe, but when prices keep rising, a large cash pile can slowly lose buying power—consider whether some of it belongs in a diversified fund mix for longer-term goals.",
+        `You have about ${formatPp(drift.cash)}pp more cash than your ${profile} target (${target.cash}%)—when prices keep rising, idle cash can slowly lose buying power.`,
+        "Cash feels safe, but consider whether some of the extra belongs in a diversified fund mix for longer-term goals.",
         "Keep enough cash for near-term bills; only rethink the extra that sits idle for years.",
       )
     } else {
       bullets.push(
-        "Staying invested in a broad mix can help money keep working when everyday prices climb—but nothing is guaranteed year to year.",
+        "Your cash slice is at or below your target—staying invested in a broad mix can help money keep working when everyday prices climb—but nothing is guaranteed year to year.",
       )
     }
     bullets.push(
@@ -173,29 +205,38 @@ export function suggestRebalancingStrategy(
     return {
       bullets,
       rationale:
-        cashHeavy && !fundHeavy
-          ? "You hold a larger cash share, so we focus on the tradeoff between safety today and keeping up with rising prices over time."
-          : "We balanced your current stock, fund, and cash split with how long you can leave money invested.",
+        cashOverweight && !fundOverweight
+          ? `${comparisonRationale} You're above target on cash by ${formatPp(drift.cash)}pp and not meaningfully overweight funds, so we focus on the tradeoff between safety today and keeping up with rising prices. ${driftDetail}`
+          : `${comparisonRationale} We balanced your current split with how long you can leave money invested and how each bucket compares to your ${profile} guide. ${driftDetail}`,
     }
   }
 
+  const stockTrimLine = stockOverweight
+    ? `You're about ${formatPp(drift.stocks)}pp overweight on stocks vs your ${profile} target (${target.stocks}%)—trimming from that slice before core mutual funds is usually the gentler first lever.`
+    : "In general, trim from stock slices first if they are overweight compared to your plan, before touching core mutual fund positions."
+
   const bullets: string[] = [
+    targetVsActualIntro,
     "Picture needing about one-fifth of your portfolio within the next year—build that amount in places you can reach without drama.",
-    "In general, trim from stock slices first if they are overweight compared to your plan, before touching core mutual fund positions.",
+    stockTrimLine,
     "Pause or lower optional new stock buys temporarily if you need to raise cash without selling everything at once.",
     "Keep a clear dollar amount in cash or very stable fund shares so the withdrawal does not force surprise sales.",
   ]
   if (topHoldings.length > 0 && topHoldings[0].pctRounded >= 25) {
     bullets.splice(
-      1,
+      3,
       0,
       `Your largest position (${topHoldings[0].symbol}) is a big part of the pie—when raising cash, consider reducing that overweight first so one company is not carrying so much of your future.`,
     )
   }
+  if (fundUnderweight) {
+    bullets.push(
+      `You're ${formatPp(drift.funds)}pp below target on mutual funds (${target.funds}%)—before selling funds for cash, check whether you can raise some from the stock slice instead.`,
+    )
+  }
   return {
     bullets,
-    rationale:
-      "We assumed a meaningful withdrawal soon, so the priority is cash you can use on your timeline while keeping the rest aligned with your goal.",
+    rationale: `${comparisonRationale} We assumed a meaningful withdrawal soon, so the priority is cash you can use on your timeline while keeping the rest aligned with your goal (${s.goal}). ${driftDetail}`,
   }
 }
 

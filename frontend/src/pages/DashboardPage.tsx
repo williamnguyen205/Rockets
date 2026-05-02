@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import {
   Cell,
   Pie,
@@ -8,10 +9,12 @@ import {
 import { Link } from "react-router-dom"
 import { ArrowDownRight, ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import {
+  getAllocationDrift,
   getHoldingValue,
+  TARGET_ALLOCATION_BY_PROFILE,
   type InvestorProfile,
   type RiskLevel,
   usePortfolioStore,
@@ -90,6 +93,17 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
+function DeltaChip({ driftPp }: { driftPp: number }) {
+  const rounded = Math.round(driftPp)
+  if (Math.abs(rounded) <= 3) {
+    return <span className="text-xs font-medium text-muted-foreground">On target</span>
+  }
+  if (rounded > 0) {
+    return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">+{rounded}pp overweight</span>
+  }
+  return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">{rounded}pp underweight</span>
+}
+
 const nextMoveByProfile: Record<InvestorProfile, string> = {
   Conservative:
     "Prioritize steady contributions and keep enough cash for near-term needs before adding more stock exposure.",
@@ -104,6 +118,39 @@ const nextMoveByProfile: Record<InvestorProfile, string> = {
 export function DashboardPage() {
   const { healthScore, profile, timeline, goal, monthlyContribution, allocation, holdings, cashBalance } =
     usePortfolioStore()
+
+  const targetAllocation = TARGET_ALLOCATION_BY_PROFILE[profile]
+  const drift = useMemo(
+    () => getAllocationDrift(allocation, targetAllocation),
+    [allocation, targetAllocation],
+  )
+
+  const vsTargetRows = useMemo(
+    () => [
+      {
+        label: "Stocks",
+        current: allocation.find((a) => a.name === "Stocks")?.value ?? 0,
+        targetPct: targetAllocation.stocks,
+        color: "#34a85a",
+        driftPp: drift.stocks,
+      },
+      {
+        label: "Mutual Funds",
+        current: allocation.find((a) => a.name === "Mutual Funds")?.value ?? 0,
+        targetPct: targetAllocation.funds,
+        color: "#4682b4",
+        driftPp: drift.funds,
+      },
+      {
+        label: "Cash",
+        current: allocation.find((a) => a.name === "Cash")?.value ?? 0,
+        targetPct: targetAllocation.cash,
+        color: "#6495ed",
+        driftPp: drift.cash,
+      },
+    ],
+    [allocation, targetAllocation, drift],
+  )
 
   return (
     <div className="space-y-8">
@@ -184,6 +231,49 @@ export function DashboardPage() {
               <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Current vs target</CardTitle>
+          <CardDescription>
+            Targets match your <span className="font-medium text-foreground">{profile}</span> posture. Bars show
+            today&apos;s mix; the vertical line is your target for that bucket.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {vsTargetRows.map((row) => (
+            <div key={row.label} className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+                  <span className="text-sm font-medium text-foreground">{row.label}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{row.current}%</span> now ·{" "}
+                    <span className="font-semibold text-foreground">{row.targetPct}%</span> target
+                  </span>
+                  <DeltaChip driftPp={row.driftPp} />
+                </div>
+              </div>
+              <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full opacity-90"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, row.current))}%`,
+                    backgroundColor: row.color,
+                  }}
+                />
+                <div
+                  className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-foreground shadow-sm"
+                  style={{ left: `${Math.min(100, Math.max(0, row.targetPct))}%`, transform: "translateX(-50%)" }}
+                  aria-hidden
+                />
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
 

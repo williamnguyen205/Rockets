@@ -21,7 +21,36 @@ export type TradeResult = {
   message: string
 }
 
-type AllocationItem = { name: string; value: number; color: string }
+export type AllocationItem = { name: string; value: number; color: string }
+
+export type AllocationTarget = { stocks: number; funds: number; cash: number }
+
+export const TARGET_ALLOCATION_BY_PROFILE: Record<InvestorProfile, AllocationTarget> = {
+  Conservative: { stocks: 30, funds: 50, cash: 20 },
+  Balanced: { stocks: 50, funds: 40, cash: 10 },
+  Growth: { stocks: 65, funds: 30, cash: 5 },
+  Aggressive: { stocks: 80, funds: 18, cash: 2 },
+}
+
+export type AllocationDrift = {
+  stocks: number
+  funds: number
+  cash: number
+  totalAbs: number
+}
+
+export function getAllocationDrift(current: AllocationItem[], target: AllocationTarget): AllocationDrift {
+  const cur = (name: string) => current.find((a) => a.name === name)?.value ?? 0
+  const stocks = cur("Stocks") - target.stocks
+  const funds = cur("Mutual Funds") - target.funds
+  const cash = cur("Cash") - target.cash
+  return {
+    stocks,
+    funds,
+    cash,
+    totalAbs: Math.abs(stocks) + Math.abs(funds) + Math.abs(cash),
+  }
+}
 
 type PortfolioState = {
   healthScore: number
