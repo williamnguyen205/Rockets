@@ -29,8 +29,8 @@ import {
 } from "@/store/portfolio"
 
 const chartSeries = [
-  { key: "baseline", label: "Current path", color: "#4682b4" },
-  { key: "optimized", label: "Optimized path", color: "#34a85a" },
+  { key: "baseline", label: "Current path", color: "#2563eb" },
+  { key: "optimized", label: "Optimized path", color: "#0f766e" },
 ]
 
 const annualReturnByProfile: Record<InvestorProfile, number> = {
@@ -132,7 +132,7 @@ function TutorSection({
   body: string
 }) {
   return (
-    <div className="rounded-xl border border-border/80 bg-muted/30 px-4 py-3">
+    <div className="rounded-md border border-border bg-muted/30 px-4 py-3">
       <p className="text-xs font-bold uppercase tracking-wide text-primary">{title}</p>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{body}</p>
     </div>
@@ -254,7 +254,7 @@ export function ScenariosPage() {
           <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
           Scenario lab
         </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Preview smarter moves.</h1>
+        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Model decisions before you make them.</h1>
         <p className="text-sm leading-6 text-muted-foreground">
           Model how contributions, cash drag, and risk adjustments could change the shape of your portfolio.
         </p>
@@ -347,12 +347,12 @@ export function ScenariosPage() {
               <AreaChart data={projection} margin={{ left: 0, right: 8, top: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="optimized" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="5%" stopColor="#34a85a" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#34a85a" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#0f766e" stopOpacity={0.32} />
+                    <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="baseline" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="5%" stopColor="#4682b4" stopOpacity={0.32} />
-                    <stop offset="95%" stopColor="#4682b4" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.26} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(8,13,33,0.1)" vertical={false} />
@@ -361,9 +361,9 @@ export function ScenariosPage() {
                 <Tooltip
                   contentStyle={{
                     background: "#ffffff",
-                    border: "2px solid #080d21",
-                    borderRadius: 16,
-                    color: "#080d21",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    color: "hsl(var(--foreground))",
                   }}
                   itemSorter={(item) => (item.dataKey === "optimized" ? -1 : 1)}
                   formatter={(value, name) => [
@@ -371,8 +371,8 @@ export function ScenariosPage() {
                     name === "optimized" ? "Optimized path" : "Current path",
                   ]}
                 />
-                <Area dataKey="baseline" fill="url(#baseline)" stroke="#4682b4" strokeWidth={2} type="monotone" />
-                <Area dataKey="optimized" fill="url(#optimized)" stroke="#34a85a" strokeWidth={2} type="monotone" />
+                <Area dataKey="baseline" fill="url(#baseline)" stroke="#2563eb" strokeWidth={2} type="monotone" />
+                <Area dataKey="optimized" fill="url(#optimized)" stroke="#0f766e" strokeWidth={2} type="monotone" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -411,7 +411,7 @@ export function ScenariosPage() {
                 key={def.id}
                 type="button"
                 onClick={() => selectScenario(def.id)}
-                className={`rounded-2xl border-2 p-4 text-left transition-colors ${
+                className={`rounded-lg border p-4 text-left transition-colors ${
                   active
                     ? "border-primary bg-primary/5 shadow-sm"
                     : "border-border bg-card hover:border-primary/40"

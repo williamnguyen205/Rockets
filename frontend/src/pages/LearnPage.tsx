@@ -298,14 +298,6 @@ export function LearnPage() {
   }, [completedLessons])
 
   useEffect(() => {
-    setExpandedModuleIds((prev) => {
-      const next = new Set(prev)
-      next.add(selectedLesson.moduleId)
-      return next
-    })
-  }, [selectedLesson.moduleId])
-
-  useEffect(() => {
     setLearnContext({
       moduleTitle: selectedLesson.moduleTitle,
       lessonTitle: selectedLesson.title,
@@ -330,6 +322,14 @@ export function LearnPage() {
 
   function selectLesson(lessonId: string) {
     setSelectedLessonId(lessonId)
+    const lesson = allLessons.find((item) => item.id === lessonId)
+    if (lesson) {
+      setExpandedModuleIds((current) => {
+        const next = new Set(current)
+        next.add(lesson.moduleId)
+        return next
+      })
+    }
   }
 
   function selectFlattenedLesson(lesson: typeof allLessons[number] | null) {
@@ -344,7 +344,7 @@ export function LearnPage() {
       next.add(selectedLesson.id)
       return next
     })
-    setSelectedLessonId(followingLesson.id)
+    selectLesson(followingLesson.id)
   }
 
   function toggleModuleExpanded(moduleId: string) {
@@ -369,12 +369,12 @@ export function LearnPage() {
                 <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
                 Beginner investor course
               </div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-normal text-foreground">Learn the basics with Clarity</h1>
+              <h1 className="mt-4 text-4xl font-semibold tracking-normal text-foreground">Build investor fluency one lesson at a time.</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
                 One clear next step, short lessons, and a tutor when you want plain-English help.
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-secondary/70 p-4 sm:min-w-44">
+            <div className="rounded-md border border-border bg-secondary p-4 sm:min-w-44">
               <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">Progress</p>
               <p className="mt-2 text-4xl font-semibold tracking-normal text-foreground">{progressPercent}%</p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -385,7 +385,7 @@ export function LearnPage() {
           <div className="mt-5 h-3 overflow-hidden rounded-full border border-border bg-muted">
             <div className="h-full rounded-full bg-primary" style={{ width: `${progressPercent}%` }} />
           </div>
-          <div className="mt-5 rounded-xl border border-primary bg-muted/55 p-4">
+          <div className="mt-5 rounded-md border border-primary/25 bg-muted/55 p-4">
             <p className="text-xs font-semibold uppercase tracking-normal text-primary">Continue learning</p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -432,11 +432,11 @@ export function LearnPage() {
                 <p className="mt-4 text-sm leading-7 text-muted-foreground">{selectedLesson.explanation}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-md border border-border bg-card p-4">
                   <p className="text-xs font-semibold uppercase tracking-normal text-primary">Takeaway</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.takeaway}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-md border border-border bg-card p-4">
                   <p className="text-xs font-semibold uppercase tracking-normal text-primary">Example</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.example}</p>
                 </div>
@@ -453,7 +453,7 @@ export function LearnPage() {
                 </Button>
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-md border border-border bg-card p-4">
                 <ClarityChatBlock
                   answer={answer}
                   error={error}
@@ -511,7 +511,7 @@ export function LearnPage() {
               return (
                 <div
                   key={module.id}
-                  className="overflow-hidden rounded-xl border border-border bg-card"
+                  className="overflow-hidden rounded-md border border-border bg-card"
                 >
                   <button
                     type="button"
