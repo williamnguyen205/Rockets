@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, NavLink, Outlet } from "react-router-dom"
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import { LogOut, Settings } from "lucide-react"
 import { ClarityIcon } from "@/components/ClarityLogo"
 import { ClarityTutorProvider } from "@/components/ClarityTutor"
+import { endSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -25,6 +26,13 @@ function shouldUseDarkTheme() {
 export function AppShell() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const accountMenuRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    setAccountMenuOpen(false)
+    endSession()
+    navigate("/login", { replace: true })
+  }
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", shouldUseDarkTheme())
@@ -114,15 +122,15 @@ export function AppShell() {
                   <Settings className="h-4 w-4 text-primary" aria-hidden="true" />
                   Settings
                 </Link>
-                <Link
-                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+                <button
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
                   role="menuitem"
-                  to="/"
-                  onClick={() => setAccountMenuOpen(false)}
+                  type="button"
+                  onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4 text-primary" aria-hidden="true" />
                   Logout
-                </Link>
+                </button>
               </div>
             ) : null}
           </div>
