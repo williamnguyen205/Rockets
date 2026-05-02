@@ -103,7 +103,7 @@ function PlanMetricDropdown({
   }, [open, onOpenChange])
 
   return (
-    <div className={cn("relative", open ? "z-[80]" : "z-0")} ref={ref}>
+    <div className={cn("relative", open ? "z-[250]" : "z-0")} ref={ref}>
       <button
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -129,10 +129,7 @@ function PlanMetricDropdown({
       </button>
       {open ? (
         <div
-          className={cn(
-            "absolute left-0 top-[calc(100%+6px)] z-[200] max-h-[min(24rem,calc(100vh-8rem))] min-w-[14rem] overflow-y-auto rounded-md border border-border bg-card py-1 shadow-lg outline-none ring-1 ring-border/60",
-            wideMenu ? "right-auto w-[min(31rem,calc(100vw-3rem))] sm:w-[calc(200%+0.75rem)]" : "right-0",
-          )}
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-[260] max-h-[min(24rem,calc(100vh-8rem))] min-w-[14rem] overflow-y-auto rounded-md border border-border bg-popover py-1 shadow-panel outline-none ring-1 ring-border/70"
           role={menuRole === "none" ? undefined : menuRole}
         >
           {children}
