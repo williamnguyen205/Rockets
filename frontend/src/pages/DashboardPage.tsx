@@ -5,6 +5,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts"
+import { Link } from "react-router-dom"
 import { ArrowDownRight, ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -181,9 +182,11 @@ export function DashboardPage() {
             const value = getHoldingValue(holding)
 
             return (
-              <div
+              <Link
                 key={holding.symbol}
-                className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:bg-white/[0.06] sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
+                aria-label={`View ${holding.symbol} stock details`}
+                className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:border-primary/40 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
+                to={`/stocks?ticker=${encodeURIComponent(holding.symbol)}`}
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-background text-xs font-semibold text-white sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
                   {holding.symbol}
@@ -229,7 +232,7 @@ export function DashboardPage() {
                   </div>
                   <Badge variant={riskVariant[holding.risk]}>{holding.risk} risk</Badge>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </CardContent>

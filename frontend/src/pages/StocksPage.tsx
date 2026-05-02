@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useSearchParams } from "react-router-dom"
 import {
   Area,
   AreaChart,
@@ -65,8 +66,10 @@ function formatHistoryLabel(value: string, period: string) {
 }
 
 export function StocksPage() {
-  const [tickerInput, setTickerInput] = useState("AAPL")
-  const [ticker, setTicker] = useState("AAPL")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTicker = searchParams.get("ticker")?.trim().toUpperCase() || "AAPL"
+  const [tickerInput, setTickerInput] = useState(initialTicker)
+  const [ticker, setTicker] = useState(initialTicker)
   const [period, setPeriod] = useState("1mo")
   const [quote, setQuote] = useState<StockQuote | null>(null)
   const [history, setHistory] = useState<StockHistoryPoint[]>([])
@@ -76,6 +79,16 @@ export function StocksPage() {
   const [tradeMessage, setTradeMessage] = useState("")
   const [tradeError, setTradeError] = useState("")
   const { holdings, cashBalance, buyStock, sellStock } = usePortfolioStore()
+
+  useEffect(() => {
+    const nextTicker = searchParams.get("ticker")?.trim().toUpperCase()
+    if (!nextTicker || nextTicker === ticker) return
+
+    setTicker(nextTicker)
+    setTickerInput(nextTicker)
+    setTradeMessage("")
+    setTradeError("")
+  }, [searchParams, ticker])
 
   useEffect(() => {
     let cancelled = false
@@ -158,11 +171,13 @@ export function StocksPage() {
 
     setTicker(nextTicker)
     setTickerInput(nextTicker)
+    setSearchParams({ ticker: nextTicker })
   }
 
   function selectTicker(nextTicker: string) {
     setTicker(nextTicker)
     setTickerInput(nextTicker)
+    setSearchParams({ ticker: nextTicker })
     setTradeMessage("")
     setTradeError("")
   }
