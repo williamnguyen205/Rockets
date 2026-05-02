@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 import { LogOut } from "lucide-react"
 import { ClarityIcon } from "@/components/ClarityLogo"
+import { ClarityTutorProvider } from "@/components/ClarityTutor"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -27,7 +28,8 @@ export function AppShell() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <ClarityTutorProvider>
+      <div className="min-h-screen bg-background text-foreground">
       <header className="fixed inset-x-0 top-0 z-50 h-[72px] border-b border-border/80 bg-background/95 backdrop-blur-xl">
         <nav className="mx-auto grid h-full max-w-[980px] grid-cols-[1fr_auto_1fr] items-center px-5">
           <Link
@@ -85,6 +87,7 @@ export function AppShell() {
       <main className="mx-auto w-full max-w-[980px] px-5 pb-20 pt-[112px]">
         <Outlet />
       </main>
-    </div>
+      </div>
+    </ClarityTutorProvider>
   )
 }

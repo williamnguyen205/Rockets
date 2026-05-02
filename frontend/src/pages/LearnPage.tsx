@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   BookOpen,
   CheckCircle2,
@@ -7,13 +7,12 @@ import {
   ChevronRight,
   Circle,
   GraduationCap,
-  Send,
-  Sparkles,
 } from "lucide-react"
+import { ClarityChatBlock } from "@/components/ClarityChatBlock"
+import { useClarityTutor } from "@/components/ClarityTutor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { askLearnQuestion, type LearnAnswer } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const PROGRESS_STORAGE_KEY = "clarity:learn-progress"
@@ -258,10 +257,16 @@ function readSavedProgress() {
 }
 
 export function LearnPage() {
-  const [question, setQuestion] = useState("")
-  const [answer, setAnswer] = useState<LearnAnswer | null>(null)
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const {
+    setLearnContext,
+    clearLearnContext,
+    question,
+    setQuestion,
+    answer,
+    error,
+    loading,
+    submitAsk,
+  } = useClarityTutor()
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => readSavedProgress())
   const [selectedLessonId, setSelectedLessonId] = useState(allLessons[0].id)
   const [expandedModuleIds, setExpandedModuleIds] = useState<Set<string>>(
@@ -300,36 +305,16 @@ export function LearnPage() {
     })
   }, [selectedLesson.moduleId])
 
-  async function handleAskClarity(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  useEffect(() => {
+    setLearnContext({
+      moduleTitle: selectedLesson.moduleTitle,
+      lessonTitle: selectedLesson.title,
+    })
+  }, [selectedLesson.moduleTitle, selectedLesson.title, setLearnContext])
 
-    const trimmedQuestion = question.trim()
-    if (!trimmedQuestion) {
-      setError("Ask a question first, even a short one.")
-      setAnswer(null)
-      return
-    }
-
-    setLoading(true)
-    setError("")
-
-    try {
-      const response = await askLearnQuestion(trimmedQuestion, {
-        moduleTitle: selectedLesson.moduleTitle,
-        lessonTitle: selectedLesson.title,
-      })
-      setAnswer(response)
-    } catch (err) {
-      setAnswer(null)
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Clarity AI is unavailable right now. Make sure the backend and Ollama are running.",
-      )
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => {
+    return () => clearLearnContext()
+  }, [clearLearnContext])
 
   function toggleLessonComplete(lessonId: string) {
     setCompletedLessons((current) => {
@@ -469,52 +454,16 @@ export function LearnPage() {
               </div>
 
               <div className="rounded-xl border border-border bg-card p-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
-                  <h3 className="font-semibold text-foreground">Ask Clarity about this lesson</h3>
-                </div>
-                <form className="mt-4 space-y-3" onSubmit={handleAskClarity}>
-                  <textarea
-                    className="min-h-20 w-full resize-none rounded-xl border border-border bg-muted/55 px-4 py-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30"
-                    placeholder={`Ask about ${selectedLesson.title.toLowerCase()}...`}
-                    value={question}
-                    onChange={(event) => setQuestion(event.target.value)}
-                  />
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      Context: {selectedLesson.moduleTitle} / {selectedLesson.title}
-                    </p>
-                    <Button disabled={loading} type="submit">
-                      {loading ? "Thinking..." : "Ask"}
-                      <Send className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </div>
-                </form>
-
-                {error ? (
-                  <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                    <p className="text-sm font-semibold text-foreground">Clarity AI is unavailable</p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{error}</p>
-                  </div>
-                ) : null}
-
-                {answer ? (
-                  <div className="mt-4 grid gap-3">
-                    {[
-                      ["Answer", answer.answer],
-                      ["Key takeaway", answer.takeaway],
-                      ["Example", answer.example],
-                    ].map(([label, copy]) => (
-                      <div
-                        key={label}
-                        className="rounded-xl border border-border bg-card p-4"
-                      >
-                        <p className="text-xs font-semibold uppercase tracking-normal text-primary">{label}</p>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+                <ClarityChatBlock
+                  answer={answer}
+                  error={error}
+                  lessonTitle={selectedLesson.title}
+                  loading={loading}
+                  moduleTitle={selectedLesson.moduleTitle}
+                  question={question}
+                  onQuestionChange={setQuestion}
+                  onSubmit={submitAsk}
+                />
               </div>
 
               <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:justify-between">
