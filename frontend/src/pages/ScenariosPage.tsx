@@ -261,6 +261,78 @@ function RecommendedMoveCard({ plan }: { plan: ScenarioActionPlan }) {
   )
 }
 
+function ReviewPlanPanel({
+  onCancel,
+  onConfirm,
+  plan,
+}: {
+  onCancel: () => void
+  onConfirm: () => void
+  plan: ScenarioActionPlan
+}) {
+  const primaryTrade = plan.trades[0]
+  const hasAction = Boolean(primaryTrade && primaryTrade.amountUsd > 0)
+
+  return (
+    <div className="mt-4 rounded-md border border-primary/30 bg-card p-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase text-primary">Practice rebalance preview</p>
+      <h4 className="mt-2 text-base font-semibold text-foreground">
+        {hasAction ? "Here is what Clarity will simulate" : "No trade will be simulated"}
+      </h4>
+      <div className="mt-3 grid gap-3">
+        <div className="rounded-md border border-border bg-muted/35 p-3">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Main action</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">
+            {hasAction
+              ? `${formatCurrency(primaryTrade.amountUsd)} from ${primaryTrade.from} to ${primaryTrade.to}`
+              : "Keep current portfolio mix and review only."}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {primaryTrade?.because ??
+              "Your allocation is close enough to the target that an unnecessary trade could add complexity without improving the plan."}
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="rounded-md border border-border bg-muted/35 p-3">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Stocks</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {plan.before.stocks}% -&gt; {plan.after.stocks}%
+            </p>
+          </div>
+          <div className="rounded-md border border-border bg-muted/35 p-3">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Mutual funds</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {plan.before.funds}% -&gt; {plan.after.funds}%
+            </p>
+          </div>
+          <div className="rounded-md border border-border bg-muted/35 p-3">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">Cash</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {plan.before.cash}% -&gt; {plan.after.cash}%
+            </p>
+          </div>
+        </div>
+        <div className="rounded-md border border-border bg-muted/35 p-3">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Before confirming</p>
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-muted-foreground">
+            <li>Estimated trading cost: {formatCurrency(plan.transparency.estimatedTradingCostUsd)} in this practice model.</li>
+            <li>{plan.transparency.taxNote}</li>
+            <li>This updates the practice portfolio only. No real trades are placed.</li>
+          </ul>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Button className="flex-1" type="button" onClick={onConfirm}>
+          Confirm practice rebalance
+        </Button>
+        <Button className="flex-1" type="button" variant="secondary" onClick={onCancel}>
+          Go back
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 type SuggestedTrade = {
   action: "sell" | "buy"
   symbol?: string
@@ -424,6 +496,7 @@ export function ScenariosPage() {
     usePortfolioStore()
   const [selectedScenarioId, setSelectedScenarioId] = useState<ScenarioId>("market_drop_20")
   const [reviewedScenarioId, setReviewedScenarioId] = useState<ScenarioId | null>(null)
+  const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
   const [practiceMessage, setPracticeMessage] = useState("")
   const [scenarioPrompt, setScenarioPrompt] = useState("")
   const [simulation, setSimulation] = useState<ScenarioSimulationAnswer | null>(null)
@@ -753,6 +826,8 @@ export function ScenariosPage() {
               onSelect={() => {
                 setSelectedScenarioId(definition.id)
                 setPracticeMessage("")
+                setReviewPanelOpen(false)
+                setReviewedScenarioId(null)
               }}
             />
           ))}
@@ -849,7 +924,8 @@ export function ScenariosPage() {
                     variant={reviewedScenarioId === selectedScenarioId ? "secondary" : "default"}
                     onClick={() => {
                       setReviewedScenarioId(selectedScenarioId)
-                      setPracticeMessage("Reviewed. You can now apply the practice-only rebalance.")
+                      setReviewPanelOpen(true)
+                      setPracticeMessage("")
                     }}
                   >
                     {reviewedScenarioId === selectedScenarioId ? "Plan reviewed" : "Review plan"}
@@ -858,11 +934,21 @@ export function ScenariosPage() {
                     className="flex-1"
                     disabled={!canApplyPracticePlan}
                     type="button"
-                    onClick={applyPracticePlan}
+                    onClick={() => setReviewPanelOpen(true)}
                   >
                     Execute practice rebalance
                   </Button>
                 </div>
+                {reviewPanelOpen ? (
+                  <ReviewPlanPanel
+                    plan={selectedPlan}
+                    onCancel={() => setReviewPanelOpen(false)}
+                    onConfirm={() => {
+                      applyPracticePlan()
+                      setReviewPanelOpen(false)
+                    }}
+                  />
+                ) : null}
                 {practiceMessage ? (
                   <p className="mt-3 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground">
                     {practiceMessage}
