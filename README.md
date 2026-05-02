@@ -54,10 +54,10 @@ uvicorn main:app --reload
 
 The API defaults to `http://127.0.0.1:8000`.
 
-For AI features, install and run Ollama:
+For AI features, install and run Ollama. The app defaults to **Gemma 4 E4B** (`gemma4:e4b`) for faster local inference than larger chat models:
 
 ```bash
-ollama pull phi4:14b
+ollama pull gemma4:e4b
 ollama serve
 ```
 
@@ -107,4 +107,4 @@ curl -X POST http://127.0.0.1:8000/ai/learn \
 
 - Keep browser-only code in `frontend/src`; keep HTTP/API code in `backend/`.
 - Override the API base URL with `VITE_API_BASE_URL` (e.g. in `frontend/.env.local`).
-- Ollama defaults: `OLLAMA_BASE_URL=http://127.0.0.1:11434`, `OLLAMA_MODEL=phi4:14b` (see backend code for env usage).
+- Ollama defaults: `OLLAMA_BASE_URL=http://127.0.0.1:11434`, `OLLAMA_MODEL=gemma4:e4b` (override via env; see `backend/routes/ai.py`).

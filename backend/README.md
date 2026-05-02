@@ -32,12 +32,14 @@ Serves at `http://127.0.0.1:8000`.
 
 ## Ollama
 
+Default model is **`gemma4:e4b`** (Gemma 4 effective 4B) for lower latency than larger models. Pull it before using `/ai/*`:
+
 ```bash
-ollama pull phi4:14b
+ollama pull gemma4:e4b
 ollama serve
 ```
 
-Typical env (see `main.py` / `routes/ai.py` for exact names):
+Typical env (see `routes/ai.py` for usage):
 
 - `OLLAMA_BASE_URL=http://127.0.0.1:11434`
-- `OLLAMA_MODEL=phi4:14b`
+- `OLLAMA_MODEL=gemma4:e4b`
