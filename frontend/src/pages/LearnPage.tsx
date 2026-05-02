@@ -346,31 +346,31 @@ export function LearnPage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-primary">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-primary">
                 <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
                 Beginner investor course
               </div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-normal text-white">Learn the basics with Clarity</h1>
+              <h1 className="mt-4 text-4xl font-semibold tracking-normal text-foreground">Learn the basics with Clarity</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
                 One clear next step, short lessons, and a tutor when you want plain-English help.
               </p>
             </div>
-            <div className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 sm:min-w-44">
+            <div className="rounded-xl border border-border bg-secondary/70 p-4 sm:min-w-44">
               <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">Progress</p>
-              <p className="mt-2 text-4xl font-semibold tracking-normal text-white">{progressPercent}%</p>
+              <p className="mt-2 text-4xl font-semibold tracking-normal text-foreground">{progressPercent}%</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {completedCount} of {allLessons.length} lessons
               </p>
             </div>
           </div>
-          <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted">
+          <div className="mt-5 h-3 overflow-hidden rounded-full border border-border bg-muted">
             <div className="h-full rounded-full bg-primary" style={{ width: `${progressPercent}%` }} />
           </div>
-          <div className="mt-5 rounded-lg border border-primary/20 bg-primary/[0.08] p-4">
+          <div className="mt-5 rounded-xl border border-primary bg-muted/55 p-4">
             <p className="text-xs font-semibold uppercase tracking-normal text-primary">Continue learning</p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-white">{nextLesson.title}</p>
+                <p className="text-sm font-semibold text-foreground">{nextLesson.title}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{nextLesson.moduleTitle}</p>
               </div>
               <Button type="button" onClick={() => selectFlattenedLesson(nextLesson)}>
@@ -407,28 +407,28 @@ export function LearnPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div>
-            <h2 className="text-3xl font-semibold tracking-normal text-white">{selectedLesson.title}</h2>
+            <h2 className="text-3xl font-semibold tracking-normal text-foreground">{selectedLesson.title}</h2>
             <p className="mt-4 text-sm leading-7 text-muted-foreground">{selectedLesson.explanation}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4">
+            <div className="rounded-xl border border-border bg-white p-4">
               <p className="text-xs font-semibold uppercase tracking-normal text-primary">Takeaway</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.takeaway}</p>
             </div>
-            <div className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4">
+            <div className="rounded-xl border border-border bg-white p-4">
               <p className="text-xs font-semibold uppercase tracking-normal text-primary">Example</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.example}</p>
             </div>
           </div>
 
-          <div className="rounded-lg border border-accent/20 bg-white/[0.025] p-4">
+          <div className="rounded-xl border border-border bg-white p-4">
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
-              <h3 className="font-semibold text-white">Ask Clarity about this lesson</h3>
+              <h3 className="font-semibold text-foreground">Ask Clarity about this lesson</h3>
             </div>
             <form className="mt-4 space-y-3" onSubmit={handleAskClarity}>
               <textarea
-                className="min-h-20 w-full resize-none rounded-lg border border-border bg-background px-4 py-3 text-sm leading-6 text-white outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="min-h-20 w-full resize-none rounded-xl border border-border bg-muted/55 px-4 py-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30"
                 placeholder={`Ask about ${selectedLesson.title.toLowerCase()}...`}
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
@@ -446,7 +446,7 @@ export function LearnPage() {
 
             {error ? (
               <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-                <p className="text-sm font-semibold text-white">Clarity AI is unavailable</p>
+                <p className="text-sm font-semibold text-foreground">Clarity AI is unavailable</p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">{error}</p>
               </div>
             ) : null}
@@ -460,7 +460,7 @@ export function LearnPage() {
                 ].map(([label, copy]) => (
                   <div
                     key={label}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4"
+                    className="rounded-xl border border-border bg-white p-4"
                   >
                     <p className="text-xs font-semibold uppercase tracking-normal text-primary">{label}</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy}</p>
@@ -470,7 +470,7 @@ export function LearnPage() {
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-white/[0.08] pt-4 sm:flex-row sm:justify-between">
+          <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:justify-between">
             <Button
               disabled={!previousLesson}
               type="button"
@@ -495,7 +495,7 @@ export function LearnPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-normal text-white">Browse the course</h2>
+          <h2 className="text-2xl font-semibold tracking-normal text-foreground">Browse the course</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Pick any lesson, or follow the highlighted next step.
           </p>
@@ -513,7 +513,7 @@ export function LearnPage() {
                       <p className="text-xs font-semibold uppercase tracking-normal text-primary">
                         Module {moduleIndex + 1}
                       </p>
-                      <h3 className="mt-1 text-base font-semibold text-white">{module.title}</h3>
+                      <h3 className="mt-1 text-base font-semibold text-foreground">{module.title}</h3>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {moduleCompleted} of {module.lessons.length} complete
@@ -530,10 +530,10 @@ export function LearnPage() {
                         <button
                           key={lesson.id}
                           className={cn(
-                            "flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors",
+                            "flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
                             selected
                               ? "border-primary/60 bg-primary/[0.10]"
-                              : "border-white/[0.08] bg-white/[0.025] hover:bg-white/[0.06]",
+                              : "border-border bg-white hover:bg-muted",
                             recommended && !selected && "border-primary/30 bg-primary/[0.06]",
                           )}
                           type="button"
@@ -548,7 +548,7 @@ export function LearnPage() {
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-semibold text-white">{lesson.title}</span>
+                              <span className="text-sm font-semibold text-foreground">{lesson.title}</span>
                               {recommended ? <Badge>Next</Badge> : null}
                             </span>
                           </span>

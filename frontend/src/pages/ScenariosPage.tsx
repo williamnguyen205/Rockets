@@ -35,11 +35,11 @@ export function ScenariosPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-primary">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-primary">
           <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
           Scenario lab
         </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-white">Preview smarter moves.</h1>
+        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Preview smarter moves.</h1>
         <p className="text-sm leading-6 text-muted-foreground">
           Model how contributions, cash drag, and risk adjustments could change the shape of your portfolio.
         </p>
@@ -78,15 +78,15 @@ export function ScenariosPage() {
                     <stop offset="95%" stopColor="#4682b4" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-                <XAxis axisLine={false} dataKey="year" tick={{ fill: "#a3a3a3", fontSize: 12 }} tickLine={false} />
-                <YAxis axisLine={false} tick={{ fill: "#a3a3a3", fontSize: 12 }} tickFormatter={(value) => `$${Number(value) / 1000}k`} tickLine={false} width={42} />
+                <CartesianGrid stroke="rgba(8,13,33,0.1)" vertical={false} />
+                <XAxis axisLine={false} dataKey="year" tick={{ fill: "#6d7d99", fontSize: 12, fontWeight: 800 }} tickLine={false} />
+                <YAxis axisLine={false} tick={{ fill: "#6d7d99", fontSize: 12, fontWeight: 800 }} tickFormatter={(value) => `$${Number(value) / 1000}k`} tickLine={false} width={42} />
                 <Tooltip
                   contentStyle={{
-                    background: "#2f3436",
-                    border: "1px solid #444444",
-                    borderRadius: 8,
-                    color: "#fff",
+                    background: "#ffffff",
+                    border: "2px solid #080d21",
+                    borderRadius: 16,
+                    color: "#080d21",
                   }}
                   formatter={(value, name) => [
                     `$${Number(value).toLocaleString()}`,
@@ -103,10 +103,10 @@ export function ScenariosPage() {
 
       <div className="grid gap-4">
         {scenarios.map((scenario) => (
-          <Card key={scenario.title} className="transition-colors hover:border-primary/30">
+          <Card key={scenario.title} className="transition-transform hover:-translate-y-0.5">
             <CardContent className="flex items-center justify-between gap-5 p-5">
               <div>
-                <p className="text-sm font-semibold text-white">{scenario.title}</p>
+                <p className="text-sm font-semibold text-foreground">{scenario.title}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{scenario.copy}</p>
               </div>
               <div className="text-right">

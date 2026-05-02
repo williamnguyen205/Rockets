@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ClarityIcon } from "@/components/ClarityLogo"
 import { cn } from "@/lib/utils"
 
 type AccountForm = {
@@ -46,7 +47,7 @@ function Field({
 }) {
   return (
     <label className="space-y-2">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <span className="text-xs font-semibold uppercase text-muted-foreground">{label}</span>
       {children}
     </label>
   )
@@ -57,7 +58,7 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-white outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20",
+        "h-11 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30",
         props.className,
       )}
     />
@@ -69,7 +70,7 @@ function SelectInput(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       {...props}
       className={cn(
-        "h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-white outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20",
+        "h-11 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30",
         props.className,
       )}
     />
@@ -89,12 +90,12 @@ function Toggle({
 }) {
   return (
     <button
-      className="flex w-full items-center justify-between gap-4 rounded-lg border border-border bg-white/[0.035] p-4 text-left transition-colors hover:bg-white/[0.06]"
+      className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-white p-4 text-left transition-colors hover:bg-muted"
       type="button"
       onClick={onChange}
     >
       <span>
-        <span className="block text-sm font-semibold text-white">{label}</span>
+        <span className="block text-sm font-semibold text-foreground">{label}</span>
         <span className="mt-1 block text-sm leading-5 text-muted-foreground">{description}</span>
       </span>
       <span
@@ -149,11 +150,11 @@ export function AccountPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-primary">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-primary">
           <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
           Account settings
         </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-white">Manage your Clarity account.</h1>
+        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Manage your Clarity account.</h1>
         <p className="text-sm leading-6 text-muted-foreground">
           Keep your profile, investing preferences, security, and notifications in one clean place.
         </p>
@@ -161,12 +162,12 @@ export function AccountPage() {
 
       <Card>
         <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-lg font-semibold text-white shadow-glow">
-            CL
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border bg-white shadow-sm">
+            <ClarityIcon className="h-11 w-11" />
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold text-white">{form.fullName}</h2>
+              <h2 className="text-xl font-semibold text-foreground">{form.fullName}</h2>
               <Badge variant="low">Active</Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{form.email}</p>
@@ -303,14 +304,14 @@ export function AccountPage() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="flex items-center justify-between gap-4 rounded-lg border border-border bg-white/[0.035] p-4"
+                className="flex items-center justify-between gap-4 rounded-xl border border-border bg-white p-4"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-primary">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/55 text-primary">
                     <item.icon className="h-4 w-4" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
                   </div>
                 </div>
@@ -322,7 +323,7 @@ export function AccountPage() {
           </CardContent>
         </Card>
 
-        <div className="sticky bottom-4 z-10 rounded-lg border border-border bg-card/95 p-3 shadow-panel backdrop-blur-xl">
+        <div className="sticky bottom-4 z-10 rounded-xl border border-border bg-card p-3 shadow-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {saved ? (
