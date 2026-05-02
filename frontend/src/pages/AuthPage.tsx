@@ -2,7 +2,9 @@ import { useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight, LockKeyhole, Mail } from "lucide-react"
 import { ClarityLogo } from "@/components/ClarityLogo"
+import { startSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
+import { usePortfolioStore } from "@/store/portfolio"
 
 type AuthMode = "create" | "login"
 
@@ -12,26 +14,63 @@ const insightRows = [
   ["Next", "Compare index funds."],
 ]
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** Pre-filled when judges tap "Use demo login" on the login tab. */
+const DEMO_LOGIN_EMAIL = "demo@clarity.app"
+const DEMO_LOGIN_PASSWORD = "claritydemo1"
+
+function validateForm(email: string, password: string, mode: AuthMode): string | null {
+  const trimmedEmail = email.trim()
+  if (!trimmedEmail) return "Enter your email."
+  if (!EMAIL_RE.test(trimmedEmail)) return "Enter a valid email address."
+  if (!password) return "Enter your password."
+  if (mode === "create" && password.length < 8) {
+    return "Use at least 8 characters for your password."
+  }
+  if (mode === "login" && password.length < 8) {
+    return "Password must be at least 8 characters."
+  }
+  return null
+}
+
 function Field({
   icon: Icon,
   label,
   placeholder,
   type = "text",
+  value,
+  onChange,
+  autoComplete,
+  invalid,
 }: {
   icon: typeof Mail
   label: string
   placeholder: string
   type?: string
+  value: string
+  onChange: (value: string) => void
+  autoComplete?: string
+  invalid?: boolean
 }) {
   return (
     <label className="block">
       <span className="text-xs font-black uppercase text-[#080d21]">{label}</span>
-      <span className="mt-2 flex h-12 items-center gap-3 rounded-[14px] border-2 border-[#d5deea] bg-white px-4 transition-colors focus-within:border-[#080d21] focus-within:ring-4 focus-within:ring-[#96ff4c]/30">
+      <span
+        className={cn(
+          "mt-2 flex h-12 items-center gap-3 rounded-[14px] border-2 bg-white px-4 transition-colors focus-within:border-[#080d21] focus-within:ring-4 focus-within:ring-[#96ff4c]/30",
+          invalid ? "border-[#c44]" : "border-[#d5deea]",
+        )}
+      >
         <Icon className="h-4 w-4 shrink-0 text-[#6a7891]" aria-hidden="true" />
         <input
+          autoComplete={autoComplete}
+          aria-invalid={invalid}
           className="min-w-0 flex-1 bg-transparent text-base font-extrabold text-[#080d21] outline-none placeholder:text-[#9aa9be]"
           placeholder={placeholder}
           type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
         />
       </span>
     </label>
@@ -99,12 +138,37 @@ function MarketPreview() {
 
 export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("create")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [formError, setFormError] = useState("")
   const navigate = useNavigate()
+  const resetOnboarding = usePortfolioStore((state) => state.resetOnboarding)
+
+  function setModeAndClearError(next: AuthMode) {
+    setMode(next)
+    setFormError("")
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    navigate("/onboarding")
+    const message = validateForm(email, password, mode)
+    if (message) {
+      setFormError(message)
+      return
+    }
+    setFormError("")
+    if (mode === "create") {
+      startSession("create")
+      resetOnboarding()
+      navigate("/onboarding")
+      return
+    }
+    startSession("login")
+    const onboarded = usePortfolioStore.getState().onboarded
+    navigate(onboarded ? "/dashboard" : "/onboarding")
   }
+
+  const showFieldError = Boolean(formError)
 
   return (
     <div className="min-h-screen bg-[#f4eddf] px-5 py-4 text-[#080d21] sm:px-8">
@@ -122,7 +186,7 @@ export function AuthPage() {
               )}
               key={item}
               type="button"
-              onClick={() => setMode(item)}
+              onClick={() => setModeAndClearError(item)}
             >
               {item}
             </button>
@@ -142,19 +206,67 @@ export function AuthPage() {
             Practice investing, understand what moved, and learn before real money is involved.
           </p>
 
-          <form className="relative mt-7 max-w-[480px]" onSubmit={handleSubmit}>
+          <form className="relative mt-7 max-w-[480px]" onSubmit={handleSubmit} noValidate>
             <div className="absolute left-3 top-4 h-full w-full rounded-[22px] bg-[#0a1329]" />
             <div className="relative rounded-[22px] border-2 border-[#080d21] bg-white p-5 sm:p-6">
               <div className="grid gap-4">
-                <Field icon={Mail} label="Email" placeholder="you@example.com" type="email" />
-                <Field icon={LockKeyhole} label="Password" placeholder="8+ characters" type="password" />
+                <Field
+                  autoComplete="email"
+                  icon={Mail}
+                  invalid={showFieldError}
+                  label="Email"
+                  placeholder="you@example.com"
+                  type="email"
+                  value={email}
+                  onChange={(value) => {
+                    setEmail(value)
+                    setFormError("")
+                  }}
+                />
+                <Field
+                  autoComplete={mode === "create" ? "new-password" : "current-password"}
+                  icon={LockKeyhole}
+                  invalid={showFieldError}
+                  label="Password"
+                  placeholder={mode === "create" ? "At least 8 characters" : "Your password"}
+                  type="password"
+                  value={password}
+                  onChange={(value) => {
+                    setPassword(value)
+                    setFormError("")
+                  }}
+                />
               </div>
 
+              {formError ? (
+                <p
+                  className="mt-4 rounded-[12px] border-2 border-[#ffb7b7] bg-[#fff0f0] px-3 py-2 text-sm font-bold text-[#a13030]"
+                  role="alert"
+                >
+                  {formError}
+                </p>
+              ) : null}
+
+              {mode === "login" ? (
+                <button
+                  className="mt-4 flex h-11 w-full items-center justify-center rounded-[14px] border-2 border-[#080d21] bg-[#fbf6ec] px-5 text-sm font-black text-[#080d21] transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#96ff4c]"
+                  type="button"
+                  onClick={() => {
+                    setEmail(DEMO_LOGIN_EMAIL)
+                    setPassword(DEMO_LOGIN_PASSWORD)
+                    setFormError("")
+                  }}
+                >
+                  Use demo login
+                </button>
+              ) : null}
+
               <button
-                className="mt-5 flex h-12 w-full items-center justify-center gap-3 rounded-[14px] bg-[#080d21] px-5 text-base font-black uppercase text-white transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#96ff4c]"
+                className="mt-5 flex h-12 w-full items-center justify-center gap-3 rounded-[14px] bg-[#080d21] px-5 text-base font-black uppercase text-white transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#96ff4c] disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!email.trim() || !password}
                 type="submit"
               >
-                {mode === "create" ? "Enter demo account" : "Continue to app"}
+                {mode === "create" ? "Create account & continue" : "Sign in"}
                 <ArrowRight className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
