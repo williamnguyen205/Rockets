@@ -310,7 +310,7 @@ export function StocksPage() {
             price,
             change: quote.changePercent,
             category: selectedFund ? "fund" : "stock",
-            risk: selectedFund?.symbol === "BND" ? "Low" : "Medium",
+            risk: selectedFund ? "Low" : undefined,
             expenseRatio: selectedFund?.expenseRatio,
             diversification: selectedFund?.diversification,
             plainLanguageRisk: selectedFund?.plainLanguageRisk,
