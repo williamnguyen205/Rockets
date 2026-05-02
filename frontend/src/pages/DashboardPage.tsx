@@ -968,30 +968,30 @@ export function DashboardPage() {
               <Link
                 key={holding.symbol}
                 aria-label={`View ${holding.symbol} stock details`}
-                className="grid grid-cols-[auto_1fr] gap-4 rounded-md border border-border bg-card p-4 transition-colors hover:border-accent hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
+                className="grid min-h-[5.75rem] grid-cols-[auto_1fr] gap-4 rounded-md border border-border bg-card p-4 transition-colors hover:border-accent hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[76px_minmax(0,1fr)_96px_116px_86px_258px_24px] sm:items-center"
                 to={`/stocks?ticker=${encodeURIComponent(holding.symbol)}`}
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-muted text-xs font-semibold text-foreground sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
                   {holding.symbol}
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">{holding.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{holding.name}</p>
                   <p className="text-xs text-muted-foreground sm:hidden">
                     {holding.shares.toFixed(2)} shares · {formatCurrency(value)}
                   </p>
                   {holding.category === "fund" ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
                       {holding.expenseRatio?.toFixed(2)}% yearly fee · {holding.diversification}
                     </p>
                   ) : null}
                 </div>
-                <div className="hidden text-sm font-medium text-foreground sm:block">
+                <div className="hidden text-right text-sm font-medium text-foreground sm:block">
                   {holding.shares.toFixed(2)} sh
                 </div>
-                <div className="hidden text-sm font-medium text-foreground sm:block">{formatCurrency(value)}</div>
+                <div className="hidden text-right text-sm font-medium text-foreground sm:block">{formatCurrency(value)}</div>
                 <div
                   className={cn(
-                    "hidden items-center gap-1 text-sm font-semibold sm:flex",
+                    "hidden items-center justify-end gap-1 text-sm font-semibold sm:flex",
                     positive ? "text-emerald-700" : "text-rose-700",
                   )}
                 >
@@ -1035,8 +1035,8 @@ export function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <ChevronRight className="ml-2 hidden h-4 w-4 text-muted-foreground sm:block" aria-hidden="true" />
                 </div>
+                <ChevronRight className="ml-auto hidden h-4 w-4 text-muted-foreground sm:block" aria-hidden="true" />
               </Link>
             )
           })}

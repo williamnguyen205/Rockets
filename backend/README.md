@@ -1,6 +1,6 @@
 # Clarity backend
 
-FastAPI service for stock data and AI-assisted Learn / Scenarios copy.
+FastAPI service for stock data and AI-assisted Learn / Scenarios copy and simulation.
 
 ## Setup
 
@@ -26,8 +26,9 @@ Serves at `http://127.0.0.1:8000`.
 | `GET` | `/health` | Liveness |
 | `POST` | `/ai/learn` | Answer a natural-language investing question (Ollama) |
 | `POST` | `/ai/scenario-explain` | Explain a scenario for the current portfolio summary |
+| `POST` | `/ai/scenario-simulate` | Turn a custom what-if prompt into assumptions, projected impact, recommended moves, and risks |
 | `GET` | `/stock/{ticker}` | Quote snapshot |
-| `GET` | `/stock/{ticker}/history` | Historical series (`period` query, e.g. `1mo`) |
+| `GET` | `/stock/{ticker}/history` | Historical series (`period` query, e.g. `1mo`; supports `max` for all available history) |
 | `GET` | `/stocks/batch` | Batch quotes (`tickers` query) |
 
 ## Ollama
