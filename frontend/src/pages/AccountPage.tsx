@@ -13,21 +13,18 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import {
+  type InvestmentTimeline,
+  type InvestorProfile,
+  usePortfolioStore,
+} from "@/store/portfolio"
 
 type AccountForm = {
   fullName: string
   email: string
-  investorType: string
-  timeline: string
+  investorType: InvestorProfile
+  timeline: InvestmentTimeline
   monthlyContribution: string
-}
-
-const initialForm: AccountForm = {
-  fullName: "Clarity User",
-  email: "clarity@example.com",
-  investorType: "Conservative",
-  timeline: "5-10 years",
-  monthlyContribution: "650",
 }
 
 const preferenceDefaults = {
@@ -115,6 +112,14 @@ function Toggle({
 }
 
 export function AccountPage() {
+  const { profile, timeline, monthlyContribution, updateProfileSettings } = usePortfolioStore()
+  const initialForm: AccountForm = {
+    fullName: "Clarity User",
+    email: "clarity@example.com",
+    investorType: profile,
+    timeline,
+    monthlyContribution: String(monthlyContribution),
+  }
   const [form, setForm] = useState<AccountForm>(initialForm)
   const [savedForm, setSavedForm] = useState<AccountForm>(initialForm)
   const [preferences, setPreferences] = useState(preferenceDefaults)
@@ -126,7 +131,7 @@ export function AccountPage() {
   )
 
   function updateForm(field: keyof AccountForm, value: string) {
-    setForm((current) => ({ ...current, [field]: value }))
+    setForm((current) => ({ ...current, [field]: value } as AccountForm))
     setSaved(false)
   }
 
@@ -137,6 +142,11 @@ export function AccountPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    updateProfileSettings({
+      profile: form.investorType,
+      timeline: form.timeline,
+      monthlyContribution: Number(form.monthlyContribution) || 0,
+    })
     setSavedForm(form)
     setSaved(true)
   }

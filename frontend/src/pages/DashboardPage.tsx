@@ -10,7 +10,12 @@ import { ArrowDownRight, ArrowUpRight, ShieldCheck, Sparkles } from "lucide-reac
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { getHoldingValue, type RiskLevel, usePortfolioStore } from "@/store/portfolio"
+import {
+  getHoldingValue,
+  type InvestorProfile,
+  type RiskLevel,
+  usePortfolioStore,
+} from "@/store/portfolio"
 
 const riskVariant: Record<RiskLevel, "low" | "medium" | "high"> = {
   Low: "low",
@@ -85,8 +90,19 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
+const nextMoveByProfile: Record<InvestorProfile, string> = {
+  Conservative:
+    "Prioritize steady contributions and keep enough cash for near-term needs before adding more stock exposure.",
+  Balanced:
+    "Maintain regular contributions while keeping stocks and funds close to your target allocation.",
+  Growth:
+    "Your longer-term plan can support more growth exposure, but keep contributions consistent through volatility.",
+  Aggressive:
+    "Watch concentration risk closely and rebalance when fast-moving positions start dominating the portfolio.",
+}
+
 export function DashboardPage() {
-  const { healthScore, profile, timeline, goal, allocation, holdings, cashBalance } =
+  const { healthScore, profile, timeline, goal, monthlyContribution, allocation, holdings, cashBalance } =
     usePortfolioStore()
 
   return (
@@ -104,8 +120,8 @@ export function DashboardPage() {
       <Card className="overflow-hidden">
         <CardContent className="p-8">
           <HealthRing score={healthScore} />
-          <div className="mt-7 grid grid-cols-3 gap-3">
-            {[profile, timeline, goal].map((chip) => (
+          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[profile, timeline, goal, `${formatCurrency(monthlyContribution)}/mo`].map((chip) => (
               <div
                 key={chip}
                 className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-center text-xs font-medium text-muted-foreground"
@@ -246,7 +262,7 @@ export function DashboardPage() {
           <div>
             <p className="text-sm font-semibold text-white">Suggested next move</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Keep cash near 15% while gradually adding to diversified mutual funds. Your portfolio is healthy, but a little more broad exposure would smooth volatility.
+              {nextMoveByProfile[profile]}
             </p>
           </div>
         </CardContent>

@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import {
   Area,
   AreaChart,
@@ -10,28 +11,94 @@ import {
 import { ArrowRight, SlidersHorizontal, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-const projection = [
-  { year: "2026", baseline: 11600, optimized: 11600 },
-  { year: "2027", baseline: 14800, optimized: 16200 },
-  { year: "2028", baseline: 18300, optimized: 21400 },
-  { year: "2029", baseline: 22500, optimized: 27600 },
-  { year: "2030", baseline: 27100, optimized: 34900 },
-  { year: "2031", baseline: 32600, optimized: 43100 },
-]
-
-const scenarios = [
-  { title: "Add $300 monthly", value: "+$18.6k", copy: "Expected lift over five years" },
-  { title: "Trim high-risk names", value: "-12%", copy: "Estimated volatility reduction" },
-  { title: "Shift cash into funds", value: "+1.4%", copy: "Projected annual return change" },
-]
+import {
+  getPortfolioValue,
+  type InvestmentTimeline,
+  type InvestorProfile,
+  usePortfolioStore,
+} from "@/store/portfolio"
 
 const chartSeries = [
   { key: "baseline", label: "Current path", color: "#4682b4" },
   { key: "optimized", label: "Optimized path", color: "#34a85a" },
 ]
 
+const annualReturnByProfile: Record<InvestorProfile, number> = {
+  Conservative: 0.045,
+  Balanced: 0.06,
+  Growth: 0.075,
+  Aggressive: 0.09,
+}
+
+const timelineYears: Record<InvestmentTimeline, number> = {
+  "1-3 years": 3,
+  "3-5 years": 5,
+  "5-10 years": 5,
+  "10+ years": 5,
+}
+
+function projectValue(startingValue: number, monthlyContribution: number, annualReturn: number, years: number) {
+  let value = startingValue
+  const monthlyReturn = annualReturn / 12
+
+  for (let month = 0; month < years * 12; month += 1) {
+    value = value * (1 + monthlyReturn) + monthlyContribution
+  }
+
+  return Math.round(value)
+}
+
+function formatCompactCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
 export function ScenariosPage() {
+  const { holdings, cashBalance, monthlyContribution, profile, timeline } = usePortfolioStore()
+  const startingValue = getPortfolioValue(holdings, cashBalance)
+  const years = timelineYears[timeline]
+  const baselineReturn = annualReturnByProfile[profile]
+  const optimizedMonthlyContribution = monthlyContribution + 300
+  const optimizedReturn = baselineReturn + 0.012
+  const projection = useMemo(
+    () =>
+      Array.from({ length: years + 1 }, (_, index) => ({
+        year: String(2026 + index),
+        baseline:
+          index === 0
+            ? Math.round(startingValue)
+            : projectValue(startingValue, monthlyContribution, baselineReturn, index),
+        optimized:
+          index === 0
+            ? Math.round(startingValue)
+            : projectValue(startingValue, optimizedMonthlyContribution, optimizedReturn, index),
+      })),
+    [baselineReturn, monthlyContribution, optimizedMonthlyContribution, optimizedReturn, startingValue, years],
+  )
+  const finalBaseline = projection[projection.length - 1].baseline
+  const finalOptimized = projection[projection.length - 1].optimized
+  const scenarios = [
+    {
+      title: "Add $300 monthly",
+      value: `+${formatCompactCurrency(finalOptimized - projectValue(startingValue, monthlyContribution, optimizedReturn, years))}`,
+      copy: `Expected lift over ${years} years`,
+    },
+    {
+      title: `${profile} profile`,
+      value: `${(baselineReturn * 100).toFixed(1)}%`,
+      copy: "Annual return assumption used in this model",
+    },
+    {
+      title: `${timeline} timeline`,
+      value: `+${formatCompactCurrency(finalOptimized - finalBaseline)}`,
+      copy: "Estimated optimized upside for your saved settings",
+    },
+  ]
+
   return (
     <div className="space-y-8">
       <section className="space-y-3">
