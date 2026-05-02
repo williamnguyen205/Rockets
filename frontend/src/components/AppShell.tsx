@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom"
+import { Link, NavLink, Outlet } from "react-router-dom"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -13,7 +13,12 @@ export function AppShell() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="fixed inset-x-0 top-0 z-50 h-[60px] border-b border-border bg-card/90 backdrop-blur-2xl">
         <nav className="mx-auto grid h-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5">
-          <div className="text-lg font-semibold tracking-normal text-primary">Clarity</div>
+          <Link
+            className="text-lg font-semibold tracking-normal text-primary transition-colors hover:text-primary/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            to="/"
+          >
+            Clarity
+          </Link>
 
           <div className="flex items-center gap-4 sm:gap-7">
             {navItems.map((item) => (
