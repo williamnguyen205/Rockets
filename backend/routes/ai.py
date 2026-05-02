@@ -23,6 +23,37 @@ class LearnAnswerResponse(BaseModel):
     example: str
 
 
+class TopHoldingSummary(BaseModel):
+    symbol: str = Field(..., max_length=16)
+    name: str = Field(..., max_length=120)
+    pctRounded: int = Field(..., ge=0, le=100)
+
+
+class PortfolioSummaryPayload(BaseModel):
+    totalValueUsd: float = Field(..., ge=0)
+    cashPct: int = Field(..., ge=0, le=100)
+    stocksPct: int = Field(..., ge=0, le=100)
+    fundsPct: int = Field(..., ge=0, le=100)
+    profile: str = Field(..., max_length=32)
+    timeline: str = Field(..., max_length=32)
+    goal: str = Field(..., max_length=200)
+    monthlyContribution: float = Field(..., ge=0)
+    topHoldings: list[TopHoldingSummary] = Field(default_factory=list, max_length=8)
+
+
+class ScenarioExplainRequest(BaseModel):
+    scenarioId: str = Field(..., min_length=1, max_length=64)
+    scenarioTitle: str = Field(..., min_length=1, max_length=200)
+    portfolioSummary: PortfolioSummaryPayload
+    suggestedTrade: str = Field(..., min_length=1, max_length=8000)
+
+
+class ScenarioExplainResponse(BaseModel):
+    theWhy: str
+    theRisk: str
+    theMove: str
+
+
 def _build_learn_prompt(
     question: str,
     module_title: str | None = None,
@@ -154,3 +185,150 @@ async def ask_learn_question(request: LearnQuestionRequest) -> LearnAnswerRespon
         raise HTTPException(status_code=422, detail="Question cannot be empty.")
 
     return await _ask_ollama(question, request.moduleTitle, request.lessonTitle)
+
+
+def _build_scenario_explain_prompt(request: ScenarioExplainRequest) -> str:
+    holdings_lines = "\n".join(
+        f"  - {h.symbol} ({h.name}): about {h.pctRounded}% of portfolio"
+        for h in request.portfolioSummary.topHoldings
+    ) or "  - (no holdings listed)"
+
+    portfolio_block = f"""
+Portfolio snapshot (educational context only):
+- Total value (approx): ${request.portfolioSummary.totalValueUsd:,.0f}
+- Cash: about {request.portfolioSummary.cashPct}%
+- Stocks: about {request.portfolioSummary.stocksPct}%
+- Mutual funds: about {request.portfolioSummary.fundsPct}%
+- Stated goal: {request.portfolioSummary.goal}
+- Risk comfort profile: {request.portfolioSummary.profile}
+- Timeline: {request.portfolioSummary.timeline}
+- Monthly contribution: ${request.portfolioSummary.monthlyContribution:,.0f}
+- Larger positions:
+{holdings_lines}
+""".strip()
+
+    return f"""
+You are the "Clarity AI Tutor," a specialized financial assistant for absolute beginners inside Clarity.
+Explain complex portfolio ideas using radical transparency and zero jargon.
+
+CONTEXT:
+The user is not market-savvy. They selected a "What-If" scenario and the app already chose a recommended
+rebalancing-style plan (plain language). Your job is to explain WHY that plan fits their scenario and profile,
+including risks, typical costs, and general tax awareness — without giving personalized tax or legal advice.
+
+SCENARIO (user selected):
+- Id: {request.scenarioId}
+- Title: {request.scenarioTitle}
+
+{portfolio_block}
+
+RECOMMENDED PLAN FROM THE APP (you must explain THIS plan, not replace it):
+{request.suggestedTrade}
+
+CONSTRAINTS:
+1. NO JARGON: Do not use terms like Alpha, Beta, Sharpe ratio, or Liquidity. Use plain words
+   (e.g. "cash you can access quickly", "money in growth-style investments").
+2. PLAIN LANGUAGE: Use at most one short analogy if it helps.
+3. SCENARIO FOCUS: Tie everything to the chosen scenario title.
+4. THE WHY: Include how the plan connects to their stated goal and timeline.
+5. THE RISK: Include what could still go wrong, plus brief plain-language notes on trading costs / fund
+   ongoing costs where relevant, and that selling in a regular brokerage account may create taxes on gains
+   (tell them to confirm with a tax pro — you do not know their situation).
+6. THE MOVE: Clear, ordered next steps that match the app's recommended plan.
+7. EDUCATIONAL ONLY: This is not personal financial, tax, or investment advice.
+
+OUTPUT:
+Return only valid JSON with exactly these string keys: "theWhy", "theRisk", "theMove".
+Each value should be 2-5 short paragraphs or tight bullet-style lines using plain text (no markdown headings).
+""".strip()
+
+
+def _parse_scenario_response(content: str) -> ScenarioExplainResponse:
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`").removeprefix("json").strip()
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI response could not be parsed. Please try again.",
+        ) from exc
+
+    return ScenarioExplainResponse(
+        theWhy=str(parsed.get("theWhy", "")).strip(),
+        theRisk=str(parsed.get("theRisk", "")).strip(),
+        theMove=str(parsed.get("theMove", "")).strip(),
+    )
+
+
+async def _ask_ollama_scenario(request: ScenarioExplainRequest) -> ScenarioExplainResponse:
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": _build_scenario_explain_prompt(request),
+        "stream": False,
+        "format": "json",
+        "options": {
+            "temperature": 0.35,
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            response = await client.post(f"{OLLAMA_BASE_URL}/api/generate", json=payload)
+    except httpx.ConnectError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Ollama is not running. Start it with `ollama serve` and try again.",
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Ollama took too long to respond. Try again or use a smaller model.",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to reach Ollama. Confirm it is running on http://127.0.0.1:11434.",
+        ) from exc
+
+    if response.status_code == 404:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Ollama model '{OLLAMA_MODEL}' was not found. Run `ollama pull {OLLAMA_MODEL}`.",
+        )
+
+    if response.status_code >= 500:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Ollama could not generate a response. Confirm the model is installed with `ollama pull {OLLAMA_MODEL}`.",
+        )
+
+    if not response.is_success:
+        raise HTTPException(
+            status_code=502,
+            detail="Unexpected Ollama response while generating the scenario explanation.",
+        )
+
+    data = response.json()
+    content = str(data.get("response", "")).strip()
+    if not content:
+        raise HTTPException(
+            status_code=502,
+            detail="Ollama returned an empty response. Please try again.",
+        )
+
+    parsed = _parse_scenario_response(content)
+    if not parsed.theWhy or not parsed.theRisk or not parsed.theMove:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI response was missing required fields. Please try again.",
+        )
+
+    return parsed
+
+
+@router.post("/scenario-explain", response_model=ScenarioExplainResponse)
+async def explain_scenario_adjustment(request: ScenarioExplainRequest) -> ScenarioExplainResponse:
+    return await _ask_ollama_scenario(request)
