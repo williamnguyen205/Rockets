@@ -46,6 +46,8 @@ export type ScenarioPortfolioSnapshot = {
   cashPct: number
   stocksPct: number
   fundsPct: number
+  estimatedStockGainPct: number
+  estimatedFundGainPct: number
   profile: InvestorProfile
   timeline: InvestmentTimeline
   goal: string
@@ -70,6 +72,16 @@ export function buildScenarioPortfolioSnapshot(
     .reduce((sum, h) => sum + getHoldingValue(h), 0)
 
   const pct = (part: number) => (total > 0 ? Math.round((part / total) * 100) : 0)
+  const stockCostBasis = holdings
+    .filter((h) => h.category === "stock")
+    .reduce((sum, h) => sum + h.averageCost * h.shares, 0)
+  const fundCostBasis = holdings
+    .filter((h) => h.category === "fund")
+    .reduce((sum, h) => sum + h.averageCost * h.shares, 0)
+  const stockUnrealizedGain = stocksValue - stockCostBasis
+  const fundUnrealizedGain = fundsValue - fundCostBasis
+  const estimatedStockGainPct = stocksValue > 0 ? Math.round((stockUnrealizedGain / stocksValue) * 100) : 0
+  const estimatedFundGainPct = fundsValue > 0 ? Math.round((fundUnrealizedGain / fundsValue) * 100) : 0
 
   const topHoldings = [...holdings]
     .map((h) => ({
@@ -85,6 +97,8 @@ export function buildScenarioPortfolioSnapshot(
     cashPct: pct(cashBalance),
     stocksPct: pct(stocksValue),
     fundsPct: pct(fundsValue),
+    estimatedStockGainPct,
+    estimatedFundGainPct,
     profile,
     timeline,
     goal,
@@ -279,6 +293,58 @@ function dollarsFromPct(totalValueUsd: number, pct: number) {
   return Math.max(0, Math.round(totalValueUsd * (pct / 100)))
 }
 
+export function estimateTradingCostUsd(amountUsd: number) {
+  if (amountUsd <= 0) return 0
+  const platformFee = Math.max(1, amountUsd * 0.0012)
+  const spreadAndSlippage = amountUsd * 0.0008
+  return Math.round(platformFee + spreadAndSlippage)
+}
+
+function estimatedTaxFromSale({
+  amountUsd,
+  gainPct,
+}: {
+  amountUsd: number
+  gainPct: number
+}) {
+  if (amountUsd <= 0 || gainPct <= 0) return 0
+  const estimatedGain = amountUsd * (gainPct / 100)
+  const estimatedTaxRate = 0.15
+  return Math.round(estimatedGain * estimatedTaxRate)
+}
+
+export function buildTaxAwarenessNote({
+  from,
+  amountUsd,
+  snapshot,
+}: {
+  from: "stocks" | "funds" | "stocks_and_funds" | "cash" | "none"
+  amountUsd: number
+  snapshot: ScenarioPortfolioSnapshot
+}) {
+  if (amountUsd <= 0 || from === "none") {
+    return "No sale is simulated, so this run estimates no immediate tax impact."
+  }
+  if (from === "cash") {
+    return "This move uses existing cash, so this run estimates no immediate sale tax impact."
+  }
+
+  const stockTax = estimatedTaxFromSale({
+    amountUsd: from === "stocks" ? amountUsd : amountUsd * 0.6,
+    gainPct: Math.max(0, snapshot.estimatedStockGainPct),
+  })
+  const fundTax = estimatedTaxFromSale({
+    amountUsd: from === "funds" ? amountUsd : from === "stocks_and_funds" ? amountUsd * 0.4 : 0,
+    gainPct: Math.max(0, snapshot.estimatedFundGainPct),
+  })
+  const estimatedTax = stockTax + fundTax
+
+  if (estimatedTax <= 0) {
+    return "This simulation does not estimate taxable gains on the sold slice, but real accounts can still have tax rules by lot and holding period."
+  }
+  return `Estimated tax impact for this simulated sale is about $${estimatedTax.toLocaleString()} (rough assumption: 15% tax on unrealized gains in the sold slice).`
+}
+
 export function buildScenarioActionPlan(
   scenarioId: ScenarioId,
   s: ScenarioPortfolioSnapshot,
@@ -319,6 +385,12 @@ export function buildScenarioActionPlan(
     const moveToFunds = Math.max(0, trimPct - cashBoost)
     const after = normalizeMix(s.stocksPct - trimPct, s.fundsPct + moveToFunds, s.cashPct + Math.min(trimPct, cashBoost))
     const trimAmount = dollarsFromPct(total, trimPct)
+    const estimatedTradingCostUsd = estimateTradingCostUsd(trimAmount)
+    const taxNote = buildTaxAwarenessNote({
+      from: trimAmount > 0 ? "stocks" : "none",
+      amountUsd: trimAmount,
+      snapshot: s,
+    })
 
     return {
       title: "Review a calmer market-drop plan",
@@ -349,9 +421,9 @@ export function buildScenarioActionPlan(
             ],
       transparency: {
         confidence: trimAmount > 0 ? "Medium" : "High",
-        estimatedTradingCostUsd: 0,
+        estimatedTradingCostUsd,
         fundFeeNote: "If money moves into a diversified ETF, the ongoing fund fee may be around 0.03%-0.10% per year for many broad index ETFs.",
-        taxNote: "Selling investments in a regular brokerage account may create taxes if there are gains. Confirm with a tax professional before making real trades.",
+        taxNote,
         whatCouldGoWrong: [
           "Markets could recover quickly after a sale, so the plan uses a modest trim instead of an all-or-nothing move.",
           "If the money is needed sooner than expected, even diversified funds can still fall in value.",
@@ -368,6 +440,13 @@ export function buildScenarioActionPlan(
   if (scenarioId === "inflation_high") {
     const excessCashPct = Math.min(Math.max(drift.cash, 0), 15)
     const after = normalizeMix(s.stocksPct, s.fundsPct + excessCashPct, s.cashPct - excessCashPct)
+    const tradeAmount = dollarsFromPct(total, excessCashPct)
+    const estimatedTradingCostUsd = estimateTradingCostUsd(tradeAmount)
+    const taxNote = buildTaxAwarenessNote({
+      from: excessCashPct > 0 ? "cash" : "none",
+      amountUsd: tradeAmount,
+      snapshot: s,
+    })
 
     return {
       title: "Review an inflation-resilience plan",
@@ -380,7 +459,7 @@ export function buildScenarioActionPlan(
             excessCashPct > 0
               ? "Shift extra idle cash toward diversified funds"
               : "Keep cash cushion, review fund fees",
-          amountUsd: dollarsFromPct(total, excessCashPct),
+          amountUsd: tradeAmount,
           from: excessCashPct > 0 ? "Cash" : "No sale",
           to: excessCashPct > 0 ? "Mutual funds" : "Review only",
           because:
@@ -391,9 +470,9 @@ export function buildScenarioActionPlan(
       ],
       transparency: {
         confidence: "Medium",
-        estimatedTradingCostUsd: 0,
+        estimatedTradingCostUsd,
         fundFeeNote: "Broad beginner funds often charge a small yearly expense ratio; Clarity shows it before a simulated buy.",
-        taxNote: "Moving cash into a fund usually has no sale tax event, but later selling that fund can create taxes in a regular brokerage account.",
+        taxNote,
         whatCouldGoWrong: [
           "Inflation could cool faster than expected, making extra cash feel less costly.",
           "Funds can still lose value over shorter windows, even if they are diversified.",
@@ -411,6 +490,13 @@ export function buildScenarioActionPlan(
   const stockTrimPct = Math.min(Math.max(s.stocksPct - target.stocks, 0) + 6, withdrawPct)
   const fundTrimPct = Math.max(0, withdrawPct - stockTrimPct)
   const after = normalizeMix(s.stocksPct - stockTrimPct, s.fundsPct - fundTrimPct, s.cashPct + withdrawPct)
+  const withdrawalAmount = dollarsFromPct(total, withdrawPct)
+  const estimatedTradingCostUsd = estimateTradingCostUsd(withdrawalAmount)
+  const taxNote = buildTaxAwarenessNote({
+    from: "stocks_and_funds",
+    amountUsd: withdrawalAmount,
+    snapshot: s,
+  })
 
   return {
     title: "Review a one-year cash plan",
@@ -420,17 +506,17 @@ export function buildScenarioActionPlan(
     trades: [
       {
         label: "Build next-year cash in stages",
-        amountUsd: dollarsFromPct(total, withdrawPct),
+        amountUsd: withdrawalAmount,
         from: stockTrimPct >= fundTrimPct ? "Stocks first" : "Stocks and funds",
         to: "Cash",
-        because: `Because about 20% may be needed next year, this sets aside roughly ${dollarsFromPct(total, withdrawPct).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })} before market timing becomes stressful.`,
+        because: `Because about 20% may be needed next year, this sets aside roughly ${withdrawalAmount.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })} before market timing becomes stressful.`,
       },
     ],
     transparency: {
       confidence: "High",
-      estimatedTradingCostUsd: 0,
+      estimatedTradingCostUsd,
       fundFeeNote: "Keeping money in cash avoids fund market swings but may earn less than invested money.",
-      taxNote: "Raising cash by selling winners may create taxable gains in a regular brokerage account. Real users should confirm before selling.",
+      taxNote,
       whatCouldGoWrong: [
         "Holding more cash may reduce upside if markets rise.",
         "The needed withdrawal could be larger than expected, so the plan should be revisited monthly.",
@@ -454,6 +540,8 @@ export function scenarioSnapshotToApiPayload(s: ScenarioPortfolioSnapshot) {
     cashPct: s.cashPct,
     stocksPct: s.stocksPct,
     fundsPct: s.fundsPct,
+    estimatedStockGainPct: s.estimatedStockGainPct,
+    estimatedFundGainPct: s.estimatedFundGainPct,
     profile: s.profile,
     timeline: s.timeline,
     goal: s.goal,

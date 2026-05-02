@@ -298,9 +298,9 @@ function DeltaChip({ driftPp }: { driftPp: number }) {
     return <span className="text-xs font-medium text-muted-foreground">On target</span>
   }
   if (rounded > 0) {
-    return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">{rounded}% over target</span>
+    return <span className="text-xs font-medium text-muted-foreground">Over target</span>
   }
-  return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">{Math.abs(rounded)}% under target</span>
+  return <span className="text-xs font-medium text-muted-foreground">Under target</span>
 }
 
 const nextMoveByProfile: Record<InvestorProfile, string> = {

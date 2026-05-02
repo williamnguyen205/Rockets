@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { simulateScenario, type ScenarioSimulationAnswer } from "@/lib/api"
 import {
+  buildTaxAwarenessNote,
   buildScenarioActionPlan,
   buildScenarioPortfolioSnapshot,
+  estimateTradingCostUsd,
   SCENARIO_DEFINITIONS,
   scenarioSnapshotToApiPayload,
   suggestRebalancingStrategy,
@@ -181,9 +183,9 @@ function ActionPlanCard({
       type="button"
       onClick={onSelect}
     >
-      <p className="text-xs font-semibold uppercase text-muted-foreground">{scenarioTitle}</p>
+      <p className="text-sm font-bold uppercase tracking-wide text-primary">{scenarioTitle}</p>
       <h3 className="mt-2 text-base font-semibold text-foreground">{plan.title}</h3>
-      <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">{plan.calmingCopy}</p>
+      <p className="mt-3 flex-1 text-sm leading-6 text-foreground/85">{plan.calmingCopy}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <span className="rounded-md border border-border bg-muted/45 px-2 py-1 text-xs font-semibold text-foreground">
           {primaryTrade ? formatCurrency(primaryTrade.amountUsd) : "$0"} reviewed
@@ -223,11 +225,11 @@ function CustomScenarioCard({
       )}
     >
       <button className="block w-full text-left" type="button" onClick={onSelect}>
-        <p className="text-xs font-semibold uppercase text-muted-foreground">Make your own scenario</p>
-        <h3 className="mt-2 text-base font-semibold text-foreground">
+        <p className="text-sm font-bold uppercase tracking-wide text-primary">Make your own scenario</p>
+        <h3 className="mt-2 text-lg font-bold leading-snug text-foreground">
           {plan ? plan.title : "Ask Clarity AI for a custom plan"}
         </h3>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        <p className="mt-3 text-sm leading-6 text-foreground/85">
           Describe a personal or market what-if. Clarity AI will turn it into a rebalance plan with the same review flow.
         </p>
       </button>
@@ -445,6 +447,7 @@ function buildCustomScenarioPlan({
   if (needsCash) {
     const cashBoostPct = Math.min(20, Math.max(8, Math.round(Math.abs(simulation.estimatedPortfolioImpactPct) / 2)))
     const after = normalizeScenarioMix(before.stocks - cashBoostPct, before.funds, before.cash + cashBoostPct)
+    const tradeAmount = Math.round(total * (cashBoostPct / 100))
     return {
       title: simulation.title || "Custom cash-reserve plan",
       calmingCopy: simulation.summary,
@@ -453,7 +456,7 @@ function buildCustomScenarioPlan({
       trades: [
         {
           label: "Build a cash cushion for this scenario",
-          amountUsd: Math.round(total * (cashBoostPct / 100)),
+          amountUsd: tradeAmount,
           from: "Stocks and funds",
           to: "Cash",
           because: `Because your custom scenario may require spendable cash, Clarity AI recommends setting aside money before you are forced to sell during stress. ${firstMove}`,
@@ -461,9 +464,13 @@ function buildCustomScenarioPlan({
       ],
       transparency: {
         confidence,
-        estimatedTradingCostUsd: 0,
+        estimatedTradingCostUsd: estimateTradingCostUsd(tradeAmount),
         fundFeeNote: "Keeping more cash can reduce short-term market risk, but it may earn less than invested money.",
-        taxNote: "Raising cash by selling investments may create taxable gains in a regular brokerage account. Confirm with a tax professional before making real trades.",
+        taxNote: buildTaxAwarenessNote({
+          from: "stocks_and_funds",
+          amountUsd: tradeAmount,
+          snapshot,
+        }),
         whatCouldGoWrong: simulation.riskNotes.slice(0, 3),
       },
       reviewChecklist: [
@@ -477,6 +484,7 @@ function buildCustomScenarioPlan({
   if (inflationStress) {
     const excessCashPct = Math.min(15, Math.max(0, before.cash - target.cash))
     const after = normalizeScenarioMix(before.stocks, before.funds + excessCashPct, before.cash - excessCashPct)
+    const tradeAmount = Math.round(total * (excessCashPct / 100))
     return {
       title: simulation.title || "Custom inflation plan",
       calmingCopy: simulation.summary,
@@ -485,7 +493,7 @@ function buildCustomScenarioPlan({
       trades: [
         {
           label: excessCashPct > 0 ? "Shift extra idle cash toward diversified funds" : "Review cash and fund fees",
-          amountUsd: Math.round(total * (excessCashPct / 100)),
+          amountUsd: tradeAmount,
           from: excessCashPct > 0 ? "Cash" : "No sale",
           to: excessCashPct > 0 ? "Mutual funds" : "Review only",
           because:
@@ -496,9 +504,13 @@ function buildCustomScenarioPlan({
       ],
       transparency: {
         confidence,
-        estimatedTradingCostUsd: 0,
+        estimatedTradingCostUsd: estimateTradingCostUsd(tradeAmount),
         fundFeeNote: "Broad beginner funds often charge a small yearly expense ratio; compare fees before any real purchase.",
-        taxNote: "Moving cash into a fund usually has no sale tax event, but later selling that fund can create taxes in a regular brokerage account.",
+        taxNote: buildTaxAwarenessNote({
+          from: excessCashPct > 0 ? "cash" : "none",
+          amountUsd: tradeAmount,
+          snapshot,
+        }),
         whatCouldGoWrong: simulation.riskNotes.slice(0, 3),
       },
       reviewChecklist: [
@@ -513,6 +525,7 @@ function buildCustomScenarioPlan({
     const trimPct = Math.min(12, Math.max(5, before.stocks - target.stocks))
     const cashBoost = 3
     const after = normalizeScenarioMix(before.stocks - trimPct, before.funds + Math.max(0, trimPct - cashBoost), before.cash + Math.min(trimPct, cashBoost))
+    const tradeAmount = Math.round(total * (trimPct / 100))
     return {
       title: simulation.title || "Custom market-stress plan",
       calmingCopy: simulation.summary,
@@ -521,7 +534,7 @@ function buildCustomScenarioPlan({
       trades: [
         {
           label: "Trim above-plan stock exposure",
-          amountUsd: Math.round(total * (trimPct / 100)),
+          amountUsd: tradeAmount,
           from: "Stocks",
           to: "Mutual funds and cash",
           because: `Because the custom scenario stresses the market and your stock slice is above target, Clarity AI recommends a modest trim rather than panic-selling. ${firstMove}`,
@@ -529,9 +542,13 @@ function buildCustomScenarioPlan({
       ],
       transparency: {
         confidence,
-        estimatedTradingCostUsd: 0,
+        estimatedTradingCostUsd: estimateTradingCostUsd(tradeAmount),
         fundFeeNote: "If money moves into a diversified ETF, the ongoing fund fee may be around 0.03%-0.10% per year for many broad index ETFs.",
-        taxNote: "Selling investments in a regular brokerage account may create taxes if there are gains. Confirm with a tax professional before making real trades.",
+        taxNote: buildTaxAwarenessNote({
+          from: "stocks",
+          amountUsd: tradeAmount,
+          snapshot,
+        }),
         whatCouldGoWrong: simulation.riskNotes.slice(0, 3),
       },
       reviewChecklist: [

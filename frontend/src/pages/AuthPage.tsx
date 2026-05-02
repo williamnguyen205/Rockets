@@ -14,7 +14,7 @@ type AuthMode = "create" | "login"
 const trustSignals = [
   "Practice portfolio",
   "Scenario modeling",
-  "Plain-English lessons",
+  "Straightforward lessons",
 ]
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

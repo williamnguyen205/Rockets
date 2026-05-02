@@ -71,7 +71,8 @@ const goalOptions: GoalOption[] = [
   { label: "Retirement", value: "Retirement" },
   { label: "Wealth growth", value: "Wealth Growth" },
   { label: "A big purchase, like a car, wedding, or education", value: "Big purchase" },
-  { label: "Other or not sure yet", value: "Exploring" },
+  { label: "Not sure yet", value: "Exploring" },
+  { label: "Other", value: "Other" },
 ]
 
 const contributionChips: ContributionChip[] = [
@@ -151,25 +152,23 @@ export function OnboardingPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const completeOnboarding = usePortfolioStore((state) => state.completeOnboarding)
-  const storedProfile = usePortfolioStore((state) => state.profile)
-  const storedTimeline = usePortfolioStore((state) => state.timeline)
-  const storedGoal = usePortfolioStore((state) => state.goal)
-  const storedMonthly = usePortfolioStore((state) => state.monthlyContribution)
 
   const [step, setStep] = useState(0)
-  const [timeline, setTimeline] = useState<InvestmentTimeline>(storedTimeline)
-  const [profile, setProfile] = useState<InvestorProfile>(storedProfile)
-  const [goal, setGoal] = useState<string>(storedGoal)
-  const [monthlyContribution, setMonthlyContribution] = useState<number>(storedMonthly)
-  const [contributionInput, setContributionInput] = useState<string>(() =>
-    String(storedMonthly ?? 0),
-  )
+  const [timeline, setTimeline] = useState<InvestmentTimeline | null>(null)
+  const [profile, setProfile] = useState<InvestorProfile | null>(null)
+  const [goal, setGoal] = useState<string | null>(null)
+  const [customGoal, setCustomGoal] = useState("")
+  const [monthlyContribution, setMonthlyContribution] = useState<number | null>(null)
+  const [contributionInput, setContributionInput] = useState<string>("")
 
   const totalSteps = 5
   const progress = ((step + 1) / totalSteps) * 100
   const isRetake = (location.state as OnboardingLocationState | null)?.retake === true
 
   function goNext() {
+    if ((step === 0 && !timeline) || (step === 1 && !profile) || (step === 2 && !goal) || (step === 3 && monthlyContribution === null)) {
+      return
+    }
     setStep((current) => Math.min(current + 1, totalSteps - 1))
   }
 
@@ -196,17 +195,34 @@ export function OnboardingPage() {
 
   function handleContributionInput(raw: string) {
     setContributionInput(raw)
+    if (!raw.trim()) {
+      setMonthlyContribution(null)
+      return
+    }
     const parsed = Math.max(0, Math.floor(Number(raw) || 0))
     setMonthlyContribution(parsed)
   }
 
   function finish() {
-    completeOnboarding({ profile, timeline, goal, monthlyContribution })
+    if (!profile || !timeline || !goal || monthlyContribution === null) return
+    const resolvedGoal = goal === "Other" ? customGoal.trim() : goal
+    if (!resolvedGoal) return
+    completeOnboarding({ profile, timeline, goal: resolvedGoal, monthlyContribution })
     navigate("/dashboard")
   }
 
-  const goalLabel = goalOptions.find((option) => option.value === goal)?.label ?? "Wealth growth"
-  const profileBlurb = profileOptions.find((option) => option.value === profile)?.blurb ?? ""
+  const goalLabel = goal
+    ? goal === "Other"
+      ? customGoal.trim() || "Other"
+      : goalOptions.find((option) => option.value === goal)?.label ?? "Wealth growth"
+    : "Not selected"
+  const profileBlurb = profile ? profileOptions.find((option) => option.value === profile)?.blurb ?? "" : ""
+  const canContinue =
+    (step === 0 && Boolean(timeline)) ||
+    (step === 1 && Boolean(profile)) ||
+    (step === 2 && Boolean(goal) && (goal !== "Other" || Boolean(customGoal.trim()))) ||
+    (step === 3 && monthlyContribution !== null) ||
+    step === 4
   const backLabel =
     step > 0
       ? "Back"
@@ -275,6 +291,21 @@ export function OnboardingPage() {
                   <span className="text-sm font-semibold">{option.label}</span>
                 </ChoiceButton>
               ))}
+              {goal === "Other" ? (
+                <label className="block">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground">Type your goal</span>
+                  <span className="mt-2 flex h-11 items-center gap-3 rounded-md border border-input bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-4 focus-within:ring-ring/20">
+                    <input
+                      className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
+                      maxLength={30}
+                      placeholder="Example: Start a business in 4 years"
+                      type="text"
+                      value={customGoal}
+                      onChange={(event) => setCustomGoal(event.target.value.slice(0, 30))}
+                    />
+                  </span>
+                </label>
+              ) : null}
             </div>
           ) : null}
 
@@ -322,11 +353,11 @@ export function OnboardingPage() {
             <div className="space-y-5">
               <div className="rounded-lg border border-border bg-muted/45 p-5">
                 <p className="text-sm font-medium leading-7 text-muted-foreground">
-                  We'll set up a <span className="font-semibold text-foreground">{profile}</span> plan aimed at{" "}
+                  We'll set up a <span className="font-semibold text-foreground">{profile ?? "not selected"}</span> plan aimed at{" "}
                   <span className="font-semibold text-foreground">{goalLabel.toLowerCase()}</span> over a{" "}
-                  <span className="font-semibold text-foreground">{timeline.toLowerCase()}</span> timeline, with about{" "}
+                  <span className="font-semibold text-foreground">{(timeline ?? "not selected").toLowerCase()}</span> timeline, with about{" "}
                   <span className="font-semibold text-foreground">
-                    ${monthlyContribution.toLocaleString()}/month
+                    ${(monthlyContribution ?? 0).toLocaleString()}/month
                   </span>{" "}
                   in contributions.
                 </p>
@@ -340,7 +371,7 @@ export function OnboardingPage() {
                   ["Profile", profile],
                   ["Timeline", timeline],
                   ["Goal", goalLabel],
-                  ["Monthly", `$${monthlyContribution.toLocaleString()}`],
+                  ["Monthly", `$${(monthlyContribution ?? 0).toLocaleString()}`],
                 ].map(([label, value]) => (
                   <div key={label} className="bg-card p-4">
                     <dt className="text-xs font-semibold uppercase text-muted-foreground">{label}</dt>
@@ -357,7 +388,7 @@ export function OnboardingPage() {
               {backLabel}
             </Button>
             {step < totalSteps - 1 ? (
-              <Button type="button" onClick={goNext}>
+              <Button disabled={!canContinue} type="button" onClick={goNext}>
                 Continue
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>

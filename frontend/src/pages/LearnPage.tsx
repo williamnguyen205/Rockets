@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   GraduationCap,
+  Trophy,
 } from "lucide-react"
 import { ClarityChatBlock } from "@/components/ClarityChatBlock"
 import { useClarityTutor } from "@/components/ClarityTutorContext"
@@ -15,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils"
 
 const PROGRESS_STORAGE_KEY = "clarity:learn-progress"
+const MODULE_QUIZ_STORAGE_KEY = "clarity:module-quiz-pass"
 
 type Lesson = {
   id: string
@@ -34,6 +36,12 @@ type LessonDeepDive = {
   notes: string[]
   useInClarity: string
   watchOut: string
+}
+
+type QuizQuestion = {
+  prompt: string
+  choices: string[]
+  correctIndex: number
 }
 
 const curriculum: Module[] = [
@@ -461,11 +469,200 @@ const lessonDeepDives: Record<string, LessonDeepDive> = {
   },
 }
 
+const moduleQuizzes: Record<string, QuizQuestion[]> = {
+  "money-shrink": [
+    {
+      prompt: "What best describes inflation?",
+      choices: [
+        "Prices usually rise over time, so money buys less.",
+        "Stocks always go up each year.",
+        "Cash earns a guaranteed high return.",
+      ],
+      correctIndex: 0,
+    },
+    {
+      prompt: "Why can starting early help beginners?",
+      choices: [
+        "Because early investing removes all risk.",
+        "Because time allows more compounding and recovery.",
+        "Because it guarantees higher returns than everyone else.",
+      ],
+      correctIndex: 1,
+    },
+    {
+      prompt: "What is the main purpose of investing for beginners?",
+      choices: [
+        "To outpace inflation over time with a plan.",
+        "To guess tomorrow's winning stock every day.",
+        "To avoid all market movement.",
+      ],
+      correctIndex: 0,
+    },
+  ],
+  "what-can-i-buy": [
+    {
+      prompt: "What is a key benefit of mutual funds and broad ETFs?",
+      choices: [
+        "They are always risk-free.",
+        "They provide easier diversification in one purchase.",
+        "They never charge any fees.",
+      ],
+      correctIndex: 1,
+    },
+    {
+      prompt: "How is a bond best described?",
+      choices: [
+        "A short-term lottery ticket.",
+        "A loan to a company or government for interest.",
+        "A guaranteed stock replacement.",
+      ],
+      correctIndex: 1,
+    },
+    {
+      prompt: "What is true about single stocks?",
+      choices: [
+        "They cannot drop quickly.",
+        "They can swing more because one company drives outcomes.",
+        "They are always safer than funds.",
+      ],
+      correctIndex: 1,
+    },
+  ],
+  risk: [
+    {
+      prompt: "What is investing risk in plain terms?",
+      choices: [
+        "The chance outcomes differ from expectations.",
+        "A guaranteed loss every year.",
+        "Only the chance of missing one trade.",
+      ],
+      correctIndex: 0,
+    },
+    {
+      prompt: "Why does timeline matter for risk?",
+      choices: [
+        "Longer timelines can better absorb volatility.",
+        "Short timelines always earn more.",
+        "Timeline has no effect on asset mix.",
+      ],
+      correctIndex: 0,
+    },
+    {
+      prompt: "What does the sleep test help with?",
+      choices: [
+        "Choosing the fastest stock to buy.",
+        "Checking if your portfolio stress level is manageable.",
+        "Predicting exact market bottoms.",
+      ],
+      correctIndex: 1,
+    },
+  ],
+  diversification: [
+    {
+      prompt: "What is diversification?",
+      choices: [
+        "Putting all money in one familiar stock.",
+        "Spreading money so one outcome hurts less.",
+        "Trading every day to avoid losses.",
+      ],
+      correctIndex: 1,
+    },
+    {
+      prompt: "What is asset allocation?",
+      choices: [
+        "How you split money across asset types.",
+        "A list of company logos you like.",
+        "A method to eliminate all risk.",
+      ],
+      correctIndex: 0,
+    },
+    {
+      prompt: "What is rebalancing mainly for?",
+      choices: [
+        "To predict next week’s market direction.",
+        "To bring your mix back toward target after drift.",
+        "To increase trading frequency as much as possible.",
+      ],
+      correctIndex: 1,
+    },
+  ],
+  start: [
+    {
+      prompt: "What is a beginner-friendly way to start investing?",
+      choices: [
+        "Start small and build consistency.",
+        "Wait until you can invest a huge lump sum.",
+        "Trade only the most volatile stocks.",
+      ],
+      correctIndex: 0,
+    },
+    {
+      prompt: "What does dollar cost averaging mean?",
+      choices: [
+        "Investing a fixed amount on a schedule.",
+        "Buying only when headlines are positive.",
+        "Changing your amount randomly each day.",
+      ],
+      correctIndex: 0,
+    },
+    {
+      prompt: "Why does account type matter?",
+      choices: [
+        "It affects taxes and flexibility.",
+        "It has no impact on outcomes.",
+        "It only matters for advanced traders.",
+      ],
+      correctIndex: 0,
+    },
+  ],
+  "looking-at": [
+    {
+      prompt: "What does a stock price tell you by itself?",
+      choices: [
+        "Whether the company is cheap or expensive overall.",
+        "Only the current per-share market price.",
+        "The company’s exact future return.",
+      ],
+      correctIndex: 1,
+    },
+    {
+      prompt: "Why is percent change useful?",
+      choices: [
+        "It compares moves across different price levels.",
+        "It removes all investment risk.",
+        "It predicts tomorrow’s close.",
+      ],
+      correctIndex: 0,
+    },
+    {
+      prompt: "What is market cap?",
+      choices: [
+        "Annual dividend paid per share.",
+        "Share price times shares outstanding.",
+        "The number of shares you personally own.",
+      ],
+      correctIndex: 1,
+    },
+  ],
+}
+
 function readSavedProgress() {
   if (typeof window === "undefined") return new Set<string>()
 
   try {
     const saved = window.localStorage.getItem(PROGRESS_STORAGE_KEY)
+    const parsed = saved ? (JSON.parse(saved) as string[]) : []
+    return new Set(parsed)
+  } catch {
+    return new Set<string>()
+  }
+}
+
+function readSavedModulePasses() {
+  if (typeof window === "undefined") return new Set<string>()
+
+  try {
+    const saved = window.localStorage.getItem(MODULE_QUIZ_STORAGE_KEY)
     const parsed = saved ? (JSON.parse(saved) as string[]) : []
     return new Set(parsed)
   } catch {
@@ -485,10 +682,13 @@ export function LearnPage() {
     submitAsk,
   } = useClarityTutor()
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => readSavedProgress())
+  const [passedModules, setPassedModules] = useState<Set<string>>(() => readSavedModulePasses())
   const [selectedLessonId, setSelectedLessonId] = useState(allLessons[0].id)
   const [expandedModuleIds, setExpandedModuleIds] = useState<Set<string>>(
     () => new Set([allLessons[0].moduleId]),
   )
+  const [quizAnswersByModule, setQuizAnswersByModule] = useState<Record<string, number[]>>({})
+  const [quizFeedback, setQuizFeedback] = useState("")
 
   const nextLesson = useMemo(
     () => allLessons.find((lesson) => !completedLessons.has(lesson.id)) ?? allLessons[0],
@@ -498,6 +698,12 @@ export function LearnPage() {
   const selectedLesson =
     allLessons.find((lesson) => lesson.id === selectedLessonId) ?? nextLesson
   const selectedDeepDive = lessonDeepDives[selectedLesson.id]
+  const selectedModule = curriculum.find((module) => module.id === selectedLesson.moduleId) ?? curriculum[0]
+  const selectedModuleQuiz = moduleQuizzes[selectedLesson.moduleId] ?? []
+  const moduleQuizAnswers = quizAnswersByModule[selectedLesson.moduleId] ?? new Array(selectedModuleQuiz.length).fill(-1)
+  const isLastLessonInModule =
+    selectedModule.lessons[selectedModule.lessons.length - 1]?.id === selectedLesson.id
+  const moduleQuizPassed = passedModules.has(selectedLesson.moduleId)
 
   const completedCount = completedLessons.size
   const progressPercent = Math.round((completedCount / allLessons.length) * 100)
@@ -514,6 +720,13 @@ export function LearnPage() {
       JSON.stringify(Array.from(completedLessons)),
     )
   }, [completedLessons])
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      MODULE_QUIZ_STORAGE_KEY,
+      JSON.stringify(Array.from(passedModules)),
+    )
+  }, [passedModules])
 
   useEffect(() => {
     setLearnContext({
@@ -544,13 +757,43 @@ export function LearnPage() {
   }
 
   function markCompleteAndGoNext() {
-    if (!followingLesson) return
     setCompletedLessons((current) => {
       const next = new Set(current)
       next.add(selectedLesson.id)
+      if (moduleQuizPassed) {
+        selectedModule.lessons.forEach((lesson) => next.add(lesson.id))
+      }
       return next
     })
+    if (!followingLesson) return
     selectLesson(followingLesson.id)
+  }
+
+  function setQuizAnswer(moduleId: string, questionIndex: number, choiceIndex: number) {
+    setQuizAnswersByModule((current) => {
+      const existing = current[moduleId] ?? new Array((moduleQuizzes[moduleId] ?? []).length).fill(-1)
+      const nextAnswers = [...existing]
+      nextAnswers[questionIndex] = choiceIndex
+      return { ...current, [moduleId]: nextAnswers }
+    })
+    setQuizFeedback("")
+  }
+
+  function submitModuleQuiz(moduleId: string) {
+    const quiz = moduleQuizzes[moduleId] ?? []
+    if (quiz.length === 0) return
+    const answers = quizAnswersByModule[moduleId] ?? []
+    if (answers.length < quiz.length || answers.some((answer) => answer < 0)) {
+      setQuizFeedback("Answer all 3 questions before submitting.")
+      return
+    }
+    const score = quiz.reduce((total, question, index) => total + (answers[index] === question.correctIndex ? 1 : 0), 0)
+    if (score >= 2) {
+      setPassedModules((current) => new Set(current).add(moduleId))
+      setQuizFeedback(`Passed: ${score}/3. Trophy earned for this module.`)
+      return
+    }
+    setQuizFeedback(`Score: ${score}/3. You can still continue, and you can retry anytime for the trophy.`)
   }
 
   function toggleModuleExpanded(moduleId: string) {
@@ -676,6 +919,49 @@ export function LearnPage() {
                 </div>
               ) : null}
 
+              {isLastLessonInModule && selectedModuleQuiz.length === 3 ? (
+                <div className="rounded-md border border-border bg-card p-4">
+                  <p className="text-xs font-semibold uppercase tracking-normal text-primary">Module check</p>
+                  <h3 className="mt-2 text-base font-semibold text-foreground">
+                    Quick quiz: 3 questions (pass with at least 2 correct)
+                  </h3>
+                  <div className="mt-4 space-y-4">
+                    {selectedModuleQuiz.map((question, questionIndex) => (
+                      <div key={question.prompt} className="rounded-md border border-border bg-muted/25 p-3">
+                        <p className="text-sm font-semibold text-foreground">{questionIndex + 1}. {question.prompt}</p>
+                        <div className="mt-2 space-y-2">
+                          {question.choices.map((choice, choiceIndex) => {
+                            const selected = moduleQuizAnswers[questionIndex] === choiceIndex
+                            return (
+                              <button
+                                key={choice}
+                                className={cn(
+                                  "w-full rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                                  selected ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground hover:bg-muted",
+                                )}
+                                type="button"
+                                onClick={() => setQuizAnswer(selectedLesson.moduleId, questionIndex, choiceIndex)}
+                              >
+                                {choice}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <Button type="button" variant="secondary" onClick={() => submitModuleQuiz(selectedLesson.moduleId)}>
+                      Submit module quiz
+                    </Button>
+                    {moduleQuizPassed ? <Badge>Module passed</Badge> : null}
+                  </div>
+                  {quizFeedback ? (
+                    <p className="mt-3 text-sm font-medium text-foreground">{quizFeedback}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="rounded-md border border-border bg-muted/25 p-4">
                 <ClarityChatBlock
                   answer={answer}
@@ -735,6 +1021,7 @@ export function LearnPage() {
                 completedLessons.has(lesson.id),
               ).length
               const expanded = expandedModuleIds.has(module.id)
+              const modulePassed = passedModules.has(module.id)
 
               return (
                 <div
@@ -761,8 +1048,9 @@ export function LearnPage() {
                       <span className="text-[0.65rem] font-semibold uppercase tracking-normal text-primary">
                         Module {moduleIndex + 1}
                       </span>
-                      <span className="mt-0.5 block text-sm font-semibold leading-snug text-foreground">
+                      <span className="mt-0.5 flex items-center gap-1.5 text-sm font-semibold leading-snug text-foreground">
                         {module.title}
+                        {modulePassed ? <Trophy className="h-3.5 w-3.5 text-amber-500" aria-label="Module quiz passed" /> : null}
                       </span>
                     </span>
                     <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[0.65rem] font-semibold tabular-nums text-muted-foreground">

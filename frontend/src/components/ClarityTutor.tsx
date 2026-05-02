@@ -199,7 +199,7 @@ function ClarityTutorChrome() {
             <p className="font-medium text-foreground">
               Tip: Tap the{" "}
               <span className="text-primary">tutor</span> button below anytime for plain-English
-              help with investing and using Clarity—from any page.
+              help with investing and using Clarity.
             </p>
             <div className="mt-3 flex justify-end gap-2">
               <Button
