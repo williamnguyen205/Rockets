@@ -9,7 +9,7 @@ import { ArrowDownRight, ArrowUpRight, ShieldCheck, Sparkles } from "lucide-reac
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { type RiskLevel, usePortfolioStore } from "@/store/portfolio"
+import { getHoldingValue, type RiskLevel, usePortfolioStore } from "@/store/portfolio"
 
 const riskVariant: Record<RiskLevel, "low" | "medium" | "high"> = {
   Low: "low",
@@ -76,8 +76,17 @@ function HealthRing({ score }: { score: number }) {
   )
 }
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 export function DashboardPage() {
-  const { healthScore, profile, timeline, goal, allocation, holdings } = usePortfolioStore()
+  const { healthScore, profile, timeline, goal, allocation, holdings, cashBalance } =
+    usePortfolioStore()
 
   return (
     <div className="space-y-8">
@@ -152,31 +161,43 @@ export function DashboardPage() {
               ))}
             </div>
           </div>
+          <div className="mt-5 rounded-md border border-white/[0.08] bg-white/[0.035] px-4 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-white">Cash available</span>
+              <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>Your Holdings</CardTitle>
-          <Badge variant="outline">4 positions</Badge>
+          <Badge variant="outline">{holdings.length} positions</Badge>
         </CardHeader>
         <CardContent className="space-y-3">
           {holdings.map((holding) => {
             const positive = holding.change >= 0
+            const value = getHoldingValue(holding)
 
             return (
               <div
                 key={holding.symbol}
-                className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:bg-white/[0.06] sm:grid-cols-[76px_1fr_86px_86px_auto] sm:items-center"
+                className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:bg-white/[0.06] sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-background text-xs font-semibold text-white sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
                   {holding.symbol}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-white">{holding.name}</p>
-                  <p className="text-xs text-muted-foreground sm:hidden">{holding.value}</p>
+                  <p className="text-xs text-muted-foreground sm:hidden">
+                    {holding.shares.toFixed(2)} shares · {formatCurrency(value)}
+                  </p>
                 </div>
-                <div className="hidden text-sm font-medium text-white sm:block">{holding.value}</div>
+                <div className="hidden text-sm font-medium text-white sm:block">
+                  {holding.shares.toFixed(2)} sh
+                </div>
+                <div className="hidden text-sm font-medium text-white sm:block">{formatCurrency(value)}</div>
                 <div
                   className={cn(
                     "hidden items-center gap-1 text-sm font-semibold sm:flex",

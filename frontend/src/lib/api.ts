@@ -4,13 +4,20 @@ export type StockQuote = {
   price: number
   change: number
   changePercent: number
+  previousClose: number | null
+  dayHigh: number | null
+  dayLow: number | null
   marketCap: number | null
   volume: number | null
 }
 
 export type StockHistoryPoint = {
   date: string
+  open: number | null
+  high: number | null
+  low: number | null
   close: number
+  volume: number | null
 }
 
 export type LearnAnswer = {
@@ -46,9 +53,9 @@ export async function getStockQuote(ticker: string) {
   return fetchJson<StockQuote>(`/stock/${encodeURIComponent(ticker)}`)
 }
 
-export async function getStockHistory(ticker: string, period = "1mo") {
+export async function getStockHistory(ticker: string, period = "1mo", interval = "1d") {
   return fetchJson<StockHistoryPoint[]>(
-    `/stock/${encodeURIComponent(ticker)}/history?period=${encodeURIComponent(period)}`,
+    `/stock/${encodeURIComponent(ticker)}/history?period=${encodeURIComponent(period)}&interval=${encodeURIComponent(interval)}`,
   )
 }
 
