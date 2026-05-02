@@ -597,7 +597,7 @@ export function DashboardPage() {
                   <span key={item.name} className="inline-flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
                     <span className="font-medium text-foreground">{item.name}</span>
-                    <span>{item.value}%</span>
+                    <span>{item.value.toFixed(1)}%</span>
                   </span>
                 ))}
               </div>
@@ -613,7 +613,7 @@ export function DashboardPage() {
                       dataKey="value"
                       innerRadius={66}
                       outerRadius={92}
-                      paddingAngle={pieSlices.length > 1 ? 2 : 0}
+                      paddingAngle={0}
                       stroke="none"
                       strokeWidth={0}
                     >
@@ -640,7 +640,7 @@ export function DashboardPage() {
                       />
                       <span className="text-sm font-medium text-foreground">{item.name}</span>
                     </div>
-                    <span className="text-sm font-semibold text-muted-foreground">{item.value}%</span>
+                    <span className="text-sm font-semibold text-muted-foreground">{item.value.toFixed(1)}%</span>
                   </div>
                 ))}
               </div>
