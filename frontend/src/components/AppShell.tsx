@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import {
   BarChart3,
   BookOpen,
+  GraduationCap,
   FlaskConical,
   LayoutDashboard,
   LogOut,
@@ -13,6 +14,8 @@ import {
 } from "lucide-react"
 import { ClarityIcon } from "@/components/ClarityLogo"
 import { ClarityTutorProvider } from "@/components/ClarityTutor"
+import { GettingStartedGuide } from "@/components/GettingStartedGuide"
+import { shouldShowGettingStartedGuide } from "@/lib/gettingStartedGuide"
 import { endSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
 
@@ -36,6 +39,7 @@ function shouldUseDarkTheme() {
 export function AppShell() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(shouldShowGettingStartedGuide)
   const accountMenuRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
@@ -106,6 +110,14 @@ export function AppShell() {
                 {item.label}
               </NavLink>
             ))}
+            <button
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              type="button"
+              onClick={() => setGuideOpen(true)}
+            >
+              <GraduationCap className="h-4 w-4" aria-hidden="true" />
+              Getting started
+            </button>
           </nav>
 
           <div className="mt-auto rounded-lg border border-border bg-background p-4">
@@ -186,6 +198,17 @@ export function AppShell() {
                 <button
                   className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
                   type="button"
+                  onClick={() => {
+                    setMobileNavOpen(false)
+                    setGuideOpen(true)
+                  }}
+                >
+                  <GraduationCap className="h-4 w-4" aria-hidden="true" />
+                  Getting started
+                </button>
+                <button
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
+                  type="button"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -252,6 +275,7 @@ export function AppShell() {
           </main>
         </div>
       </div>
+      <GettingStartedGuide open={guideOpen} onOpenChange={setGuideOpen} />
     </ClarityTutorProvider>
   )
 }

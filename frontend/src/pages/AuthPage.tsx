@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowRight, CheckCircle2, LockKeyhole, Mail, ShieldCheck } from "lucide-react"
+import { ArrowRight, CheckCircle2, LockKeyhole, Mail, ShieldCheck, UserPlus, WalletCards } from "lucide-react"
 import { ClarityLogo } from "@/components/ClarityLogo"
 import { Button } from "@/components/ui/button"
+import { resetGettingStartedGuide } from "@/lib/gettingStartedGuide"
 import { startSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
 import { usePortfolioStore } from "@/store/portfolio"
@@ -17,9 +18,10 @@ const trustSignals = [
 ]
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const BLANK_LOGIN_EMAIL = "blank@clarity.app"
+const BLANK_LOGIN_PASSWORD = "blankdemo1"
 const DEMO_LOGIN_EMAIL = "demo@clarity.app"
 const DEMO_LOGIN_PASSWORD = "claritydemo1"
-
 function validateForm(email: string, password: string, mode: AuthMode): string | null {
   const trimmedEmail = email.trim()
   if (!trimmedEmail) return "Enter your email."
@@ -84,6 +86,7 @@ export function AuthPage() {
   const [formError, setFormError] = useState("")
   const navigate = useNavigate()
   const prepareNewAccount = usePortfolioStore((state) => state.prepareNewAccount)
+  const loadSamplePortfolio = usePortfolioStore((state) => state.loadSamplePortfolio)
 
   function setModeAndClearError(next: AuthMode) {
     setMode(next)
@@ -101,14 +104,37 @@ export function AuthPage() {
     setFormError("")
     if (mode === "create") {
       prepareNewAccount()
+      resetGettingStartedGuide()
       startSession("create")
       navigate("/onboarding")
+      return
+    }
+
+    if (email.trim().toLowerCase() === BLANK_LOGIN_EMAIL) {
+      prepareNewAccount()
+      resetGettingStartedGuide()
+      startSession("login")
+      navigate("/onboarding")
+      return
+    }
+
+    if (email.trim().toLowerCase() === DEMO_LOGIN_EMAIL) {
+      loadSamplePortfolio()
+      startSession("login")
+      navigate("/dashboard")
       return
     }
 
     startSession("login")
     const onboarded = usePortfolioStore.getState().onboarded
     navigate(onboarded ? "/dashboard" : "/onboarding")
+  }
+
+  function prefillLogin(emailValue: string, passwordValue: string) {
+    setMode("login")
+    setEmail(emailValue)
+    setPassword(passwordValue)
+    setFormError("")
   }
 
   const showFieldError = Boolean(formError)
@@ -181,25 +207,41 @@ export function AuthPage() {
               />
             </div>
 
+            {mode === "login" ? (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button
+                  className="flex items-center gap-3 rounded-md border border-border bg-muted/35 p-3 text-left transition-colors hover:border-primary/45 hover:bg-muted/55 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+                  type="button"
+                  onClick={() => prefillLogin(BLANK_LOGIN_EMAIL, BLANK_LOGIN_PASSWORD)}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-primary">
+                    <UserPlus className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-foreground">Blank account</span>
+                    <span className="block truncate text-xs text-muted-foreground">{BLANK_LOGIN_EMAIL}</span>
+                  </span>
+                </button>
+                <button
+                  className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/5 p-3 text-left transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+                  type="button"
+                  onClick={() => prefillLogin(DEMO_LOGIN_EMAIL, DEMO_LOGIN_PASSWORD)}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/30 bg-card text-primary">
+                    <WalletCards className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-foreground">Demo account</span>
+                    <span className="block truncate text-xs text-muted-foreground">{DEMO_LOGIN_EMAIL}</span>
+                  </span>
+                </button>
+              </div>
+            ) : null}
+
             {formError ? (
               <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive" role="alert">
                 {formError}
               </p>
-            ) : null}
-
-            {mode === "login" ? (
-              <Button
-                className="mt-4 w-full"
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setEmail(DEMO_LOGIN_EMAIL)
-                  setPassword(DEMO_LOGIN_PASSWORD)
-                  setFormError("")
-                }}
-              >
-                Use demo login
-              </Button>
             ) : null}
 
             <Button className="mt-5 w-full" disabled={!email.trim() || !password} size="lg" type="submit">

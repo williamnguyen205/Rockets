@@ -696,9 +696,12 @@ export function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {holdings.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border/80 bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
-              No holdings yet. Add positions from the Stocks tab when you&apos;re ready.
-            </p>
+            <div className="rounded-md border border-dashed border-border/80 bg-muted/40 px-4 py-8 text-center">
+              <p className="text-sm font-semibold text-foreground">No holdings yet.</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                Add practice positions from the Stocks tab, then use Scenarios to review rebalancing ideas.
+              </p>
+            </div>
           ) : null}
           {holdings.map((holding) => {
             const positive = holding.change >= 0
@@ -719,6 +722,11 @@ export function DashboardPage() {
                   <p className="text-xs text-muted-foreground sm:hidden">
                     {holding.shares.toFixed(2)} shares · {formatCurrency(value)}
                   </p>
+                  {holding.category === "fund" ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {holding.expenseRatio?.toFixed(2)}% yearly fee · {holding.diversification}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="hidden text-sm font-medium text-foreground sm:block">
                   {holding.shares.toFixed(2)} sh
@@ -753,7 +761,12 @@ export function DashboardPage() {
                     {positive ? "+" : ""}
                     {holding.change}%
                   </div>
-                  <Badge variant={riskVariant[holding.risk]}>{holding.risk} risk</Badge>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Badge variant={holding.category === "fund" ? "default" : "outline"}>
+                      {holding.category === "fund" ? "Fund" : "Stock"}
+                    </Badge>
+                    <Badge variant={riskVariant[holding.risk]}>{holding.risk} risk</Badge>
+                  </div>
                   <ChevronRight className="ml-2 hidden h-4 w-4 text-muted-foreground sm:block" aria-hidden="true" />
                 </div>
               </Link>

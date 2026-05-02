@@ -13,12 +13,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { simulateScenario, type ScenarioSimulationAnswer } from "@/lib/api"
 import {
+  buildScenarioActionPlan,
   buildScenarioPortfolioSnapshot,
+  SCENARIO_DEFINITIONS,
   scenarioSnapshotToApiPayload,
+  suggestRebalancingStrategy,
+  type ScenarioActionPlan,
+  type ScenarioId,
 } from "@/lib/scenarioPortfolio"
 import { cn } from "@/lib/utils"
 import {
+  getAllocation,
+  getHoldingValue,
   getPortfolioValue,
+  type Holding,
   type InvestmentTimeline,
   type InvestorProfile,
   usePortfolioStore,
@@ -147,10 +155,151 @@ function SimulationList({ title, items }: { title: string; items: string[] }) {
   )
 }
 
+function AllocationCompare({
+  label,
+  before,
+  after,
+}: {
+  label: string
+  before: number
+  after: number
+}) {
+  const delta = after - before
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="font-semibold text-foreground">
+          {before}% -&gt; {after}%
+        </span>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(3, after)}%` }} />
+      </div>
+      <p className={cn("mt-2 text-xs font-semibold", delta === 0 ? "text-muted-foreground" : delta > 0 ? "text-primary" : "text-amber-700")}>
+        {delta === 0 ? "No change" : `${delta > 0 ? "+" : ""}${delta} percentage points`}
+      </p>
+    </div>
+  )
+}
+
+function ActionPlanCard({
+  active,
+  plan,
+  scenarioTitle,
+  onSelect,
+}: {
+  active: boolean
+  plan: ScenarioActionPlan
+  scenarioTitle: string
+  onSelect: () => void
+}) {
+  const primaryTrade = plan.trades[0]
+
+  return (
+    <button
+      className={cn(
+        "rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/45 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25",
+        active ? "border-primary shadow-panel" : "border-border",
+      )}
+      type="button"
+      onClick={onSelect}
+    >
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{scenarioTitle}</p>
+      <h3 className="mt-2 text-base font-semibold text-foreground">{plan.title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{plan.calmingCopy}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="rounded-md border border-border bg-muted/45 px-2 py-1 text-xs font-semibold text-foreground">
+          {primaryTrade ? formatCurrency(primaryTrade.amountUsd) : "$0"} reviewed
+        </span>
+        <span className="rounded-md border border-border bg-muted/45 px-2 py-1 text-xs font-semibold text-foreground">
+          {plan.transparency.confidence} confidence
+        </span>
+      </div>
+    </button>
+  )
+}
+
+function reduceHoldingsByValue(holdings: Holding[], amountUsd: number, categories: Array<Holding["category"]>) {
+  let remaining = amountUsd
+  const next: Holding[] = []
+
+  const sorted = [...holdings].sort((a, b) => getHoldingValue(b) - getHoldingValue(a))
+  for (const holding of sorted) {
+    if (remaining <= 0 || !categories.includes(holding.category)) {
+      next.push(holding)
+      continue
+    }
+
+    const holdingValue = getHoldingValue(holding)
+    const saleValue = Math.min(holdingValue, remaining)
+    const sharesSold = saleValue / holding.lastPrice
+    remaining -= saleValue
+
+    const shares = holding.shares - sharesSold
+    if (shares > 0.0001) {
+      next.push({ ...holding, shares })
+    }
+  }
+
+  const originalOrder = new Map(holdings.map((holding, index) => [holding.symbol, index]))
+  return {
+    holdings: next.sort((a, b) => (originalOrder.get(a.symbol) ?? 0) - (originalOrder.get(b.symbol) ?? 0)),
+    soldUsd: amountUsd - remaining,
+  }
+}
+
+function addFundHolding(holdings: Holding[], amountUsd: number) {
+  if (amountUsd <= 0) return holdings
+
+  const symbol = "VTI"
+  const price = 252
+  const shares = amountUsd / price
+  const existing = holdings.find((holding) => holding.symbol === symbol)
+
+  if (existing) {
+    return holdings.map((holding) =>
+      holding.symbol === symbol
+        ? {
+            ...holding,
+            shares: holding.shares + shares,
+            lastPrice: price,
+            category: "fund" as const,
+            expenseRatio: 0.03,
+            diversification: "Thousands of U.S. companies in one fund",
+            plainLanguageRisk: "Still moves with the stock market, but less tied to one company.",
+            dataSource: "Curated beginner ETF profile; prices are demo values.",
+          }
+        : holding,
+    )
+  }
+
+  return [
+    ...holdings,
+    {
+      symbol,
+      name: "Vanguard Total Stock Market ETF",
+      shares,
+      averageCost: price,
+      lastPrice: price,
+      change: -0.4,
+      risk: "Medium" as const,
+      category: "fund" as const,
+      expenseRatio: 0.03,
+      diversification: "Thousands of U.S. companies in one fund",
+      plainLanguageRisk: "Still moves with the stock market, but less tied to one company.",
+      dataSource: "Curated beginner ETF profile; prices are demo values.",
+    },
+  ]
+}
+
 export function ScenariosPage() {
   const whatIfRef = useRef<HTMLDivElement>(null)
   const { holdings, cashBalance, monthlyContribution, profile, timeline, goal, updateProfileSettings } =
     usePortfolioStore()
+  const [selectedScenarioId, setSelectedScenarioId] = useState<ScenarioId>("market_drop_20")
+  const [reviewedScenarioId, setReviewedScenarioId] = useState<ScenarioId | null>(null)
+  const [practiceMessage, setPracticeMessage] = useState("")
   const [scenarioPrompt, setScenarioPrompt] = useState("")
   const [simulation, setSimulation] = useState<ScenarioSimulationAnswer | null>(null)
   const [simulationError, setSimulationError] = useState("")
@@ -161,6 +310,18 @@ export function ScenariosPage() {
       buildScenarioPortfolioSnapshot(holdings, cashBalance, profile, timeline, goal, monthlyContribution),
     [holdings, cashBalance, profile, timeline, goal, monthlyContribution],
   )
+  const scenarioPlans = useMemo(
+    () =>
+      SCENARIO_DEFINITIONS.map((definition) => ({
+        definition,
+        suggestion: suggestRebalancingStrategy(definition.id, snapshot),
+        plan: buildScenarioActionPlan(definition.id, snapshot),
+      })),
+    [snapshot],
+  )
+  const selectedScenario = scenarioPlans.find((item) => item.definition.id === selectedScenarioId) ?? scenarioPlans[0]
+  const selectedPlan = selectedScenario.plan
+  const canApplyPracticePlan = reviewedScenarioId === selectedScenarioId && selectedPlan.trades.length > 0
 
   const startingValue = getPortfolioValue(holdings, cashBalance)
   const years = timelineYears[timeline]
@@ -259,6 +420,50 @@ export function ScenariosPage() {
     }
   }
 
+  function applyPracticePlan() {
+    if (!canApplyPracticePlan) return
+
+    const trade = selectedPlan.trades[0]
+    const amount = Math.max(0, trade.amountUsd)
+    if (amount <= 0) {
+      setPracticeMessage("Reviewed. No practice trade was needed because the portfolio is already close to this plan.")
+      return
+    }
+
+    usePortfolioStore.setState((state) => {
+      let holdingsAfter = state.holdings
+      let cashAfter = state.cashBalance
+
+      if (selectedScenarioId === "inflation_high") {
+        const buyAmount = Math.min(amount, cashAfter)
+        holdingsAfter = addFundHolding(holdingsAfter, buyAmount)
+        cashAfter -= buyAmount
+      } else if (selectedScenarioId === "withdraw_20pct_next_year") {
+        const sale = reduceHoldingsByValue(holdingsAfter, amount, ["stock", "fund"])
+        holdingsAfter = sale.holdings
+        cashAfter += sale.soldUsd
+      } else {
+        const sale = reduceHoldingsByValue(holdingsAfter, amount, ["stock"])
+        const cashTargetIncrease = Math.max(
+          0,
+          Math.round(state.cashBalance + getPortfolioValue(state.holdings, state.cashBalance) * ((selectedPlan.after.cash - selectedPlan.before.cash) / 100)),
+        )
+        const cashAdd = Math.min(sale.soldUsd, Math.max(0, cashTargetIncrease - state.cashBalance))
+        const fundAdd = Math.max(0, sale.soldUsd - cashAdd)
+        holdingsAfter = addFundHolding(sale.holdings, fundAdd)
+        cashAfter += cashAdd
+      }
+
+      return {
+        holdings: holdingsAfter,
+        cashBalance: cashAfter,
+        allocation: getAllocation(holdingsAfter, cashAfter),
+      }
+    })
+
+    setPracticeMessage("Practice rebalance applied. The dashboard allocation now reflects the reviewed plan.")
+  }
+
   return (
     <div className="space-y-8">
       <section className="space-y-3">
@@ -332,6 +537,166 @@ export function ScenariosPage() {
           </AssumptionField>
         </CardContent>
       </Card>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-normal text-foreground">Scenario-driven rebalance</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Pick a common beginner stress moment. Clarity uses deterministic rules first, then optional AI for extra explanation.
+          </p>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          {scenarioPlans.map(({ definition, plan }) => (
+            <ActionPlanCard
+              key={definition.id}
+              active={definition.id === selectedScenarioId}
+              plan={plan}
+              scenarioTitle={definition.title}
+              onSelect={() => {
+                setSelectedScenarioId(definition.id)
+                setPracticeMessage("")
+              }}
+            />
+          ))}
+        </div>
+
+        <Card className="overflow-hidden border-primary/20">
+          <CardHeader className="border-b border-border bg-muted/30">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <CardTitle>{selectedPlan.title}</CardTitle>
+                <CardDescription className="mt-2">{selectedScenario.definition.description}</CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground">
+                  {selectedPlan.transparency.confidence} confidence
+                </span>
+                <span className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground">
+                  Data: saved portfolio + curated fund profiles
+                </span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+            <div className="space-y-5">
+              <div className="rounded-md border border-border bg-card p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Recommended practice moves</p>
+                <div className="mt-3 space-y-3">
+                  {selectedPlan.trades.map((trade) => (
+                    <div key={`${trade.label}-${trade.to}`} className="rounded-md border border-border bg-muted/35 p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{trade.label}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {trade.from} -&gt; {trade.to}
+                          </p>
+                        </div>
+                        <p className="text-lg font-semibold text-primary">{formatCurrency(trade.amountUsd)}</p>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">{trade.because}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <AllocationCompare label="Stocks" before={selectedPlan.before.stocks} after={selectedPlan.after.stocks} />
+                <AllocationCompare label="Mutual funds" before={selectedPlan.before.funds} after={selectedPlan.after.funds} />
+                <AllocationCompare label="Cash" before={selectedPlan.before.cash} after={selectedPlan.after.cash} />
+              </div>
+
+              <div className="rounded-md border border-border bg-muted/30 p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Why this is recommended</p>
+                <p className="mt-3 text-sm leading-6 text-foreground">{selectedScenario.suggestion.rationale}</p>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                  {selectedScenario.suggestion.bullets.slice(1, 4).map((bullet) => (
+                    <li key={bullet} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-md border border-border bg-card p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Radical transparency</p>
+                <div className="mt-3 grid gap-3">
+                  <div className="rounded-md bg-muted/45 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Estimated trading cost</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {formatCurrency(selectedPlan.transparency.estimatedTradingCostUsd)} in this practice model
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-muted/45 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Fund fee note</p>
+                    <p className="mt-1 text-sm leading-6 text-foreground">{selectedPlan.transparency.fundFeeNote}</p>
+                  </div>
+                  <div className="rounded-md bg-muted/45 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Tax awareness</p>
+                    <p className="mt-1 text-sm leading-6 text-foreground">{selectedPlan.transparency.taxNote}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border bg-card p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">What could go wrong?</p>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                  {selectedPlan.transparency.whatCouldGoWrong.map((risk) => (
+                    <li key={risk} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600" />
+                      <span>{risk}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+                <p className="text-xs font-semibold uppercase text-primary">Review before simulated trade</p>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-foreground">
+                  {selectedPlan.reviewChecklist.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    className="flex-1"
+                    type="button"
+                    variant={reviewedScenarioId === selectedScenarioId ? "secondary" : "default"}
+                    onClick={() => {
+                      setReviewedScenarioId(selectedScenarioId)
+                      setPracticeMessage("Reviewed. You can now apply the practice-only rebalance.")
+                    }}
+                  >
+                    {reviewedScenarioId === selectedScenarioId ? "Plan reviewed" : "Review plan"}
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    disabled={!canApplyPracticePlan}
+                    type="button"
+                    onClick={applyPracticePlan}
+                  >
+                    Apply practice rebalance
+                  </Button>
+                </div>
+                {practiceMessage ? (
+                  <p className="mt-3 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground">
+                    {practiceMessage}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  Educational simulation only. This is not investment, tax, or legal advice, and it does not place real trades.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
