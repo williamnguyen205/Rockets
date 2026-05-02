@@ -168,7 +168,7 @@ function AllocationTooltip({
   )
 }
 
-function HealthRing({ score }: { score: number }) {
+function PlanFitRing({ score }: { score: number }) {
   const radius = 84
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (score / 100) * circumference
@@ -204,7 +204,7 @@ function HealthRing({ score }: { score: number }) {
       </svg>
       <div className="relative z-10 text-center">
         <div className="text-5xl font-semibold tracking-normal text-foreground">{score}</div>
-        <div className="mt-2 text-sm font-medium text-muted-foreground">Portfolio Health</div>
+        <div className="mt-2 text-sm font-medium text-muted-foreground">Plan Fit Score</div>
       </div>
     </div>
   )
@@ -604,15 +604,18 @@ export function DashboardPage() {
           <CardContent className="overflow-visible p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Plan fit</p>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Plan fit score</p>
                 <p className="mt-2 text-lg font-semibold text-foreground">{profile}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {TIMELINE_CHOICES.find((t) => t.value === timeline)?.label ?? timeline} · {goalChipLabel(goal)}
                 </p>
+                <p className="mt-2 max-w-[18rem] text-xs leading-5 text-muted-foreground">
+                  How well your portfolio matches your goal, timeline, risk comfort, and contribution habit.
+                </p>
               </div>
               <Badge variant="outline">{formatCurrency(monthlyContribution)}/mo</Badge>
             </div>
-            <HealthRing score={healthScore} />
+            <PlanFitRing score={healthScore} />
             <div className="mt-4 grid grid-cols-1 gap-3 overflow-visible sm:grid-cols-2">
               <PlanMetricDropdown
                 open={openMetric === "profile"}
