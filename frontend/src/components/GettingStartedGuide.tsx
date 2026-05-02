@@ -29,7 +29,7 @@ const guideSteps: GuideStep[] = [
     copy:
       "The dashboard is your calm home base. It shows how much is invested, how much is cash, and whether your mix still fits your goal.",
     bullets: [
-      "Portfolio Health is a simple checkup, not a grade.",
+      "Plan Fit Score checks whether your setup matches your goal, timeline, and comfort with risk.",
       "Allocation shows stocks, funds, and cash in plain language.",
       "Current vs target shows what changed without making you read market jargon.",
     ],
