@@ -163,9 +163,9 @@ function getAllocation(holdings: Holding[], cashBalance: number): AllocationItem
     ]
   }
 
-  const stocksPct = Math.round((stocksVal / total) * 100)
-  const fundsPct = Math.round((fundsVal / total) * 100)
-  const cashPct = Math.max(0, 100 - stocksPct - fundsPct)
+  const stocksPct = parseFloat(((stocksVal / total) * 100).toFixed(1))
+  const fundsPct = parseFloat(((fundsVal / total) * 100).toFixed(1))
+  const cashPct = parseFloat(Math.max(0, 100 - stocksPct - fundsPct).toFixed(1))
 
   return [
     { name: "Stocks", value: stocksPct, color: "#34a85a" },

@@ -613,9 +613,9 @@ export function DashboardPage() {
                       dataKey="value"
                       innerRadius={66}
                       outerRadius={92}
-                      paddingAngle={pieSlices.length > 1 ? 4 : 0}
-                      stroke="rgba(10,13,20,0.92)"
-                      strokeWidth={5}
+                      paddingAngle={pieSlices.length > 1 ? 2 : 0}
+                      stroke="none"
+                      strokeWidth={0}
                     >
                       {(pieSlices.length ? pieSlices : [{ name: "Cash", value: 100, color: "#6495ed" }]).map(
                         (entry) => (
