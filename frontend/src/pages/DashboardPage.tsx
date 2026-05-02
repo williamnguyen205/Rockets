@@ -202,10 +202,12 @@ function HealthRing({ score }: { score: number }) {
   )
 }
 
-const DASH_PERIODS = ["1w", "1mo", "3mo", "6mo", "1y", "all"] as const
+const DASH_PERIODS = ["1d", "1w", "1mo", "3mo", "6mo", "1y", "all"] as const
 type DashPeriod = (typeof DASH_PERIODS)[number]
 
-const DASH_PERIOD_DAYS: Record<DashPeriod, number> = {
+// For "1d" the unit is half-hour slots (13 slots = 9:30am–4:00pm); all others are calendar days.
+const DASH_PERIOD_POINTS: Record<DashPeriod, number> = {
+  "1d": 13,
   "1w": 7,
   "1mo": 30,
   "3mo": 90,
@@ -217,21 +219,25 @@ const DASH_PERIOD_DAYS: Record<DashPeriod, number> = {
 function generatePortfolioHistory(
   currentValue: number,
   dailyVolatility: number,
-  days: number,
+  points: number,
 ): { date: string; value: number }[] {
   if (currentValue <= 0) return []
 
-  // Deterministic LCG seeded on value + day-count so each period looks distinct but stable
-  let s = ((Math.floor(currentValue) * 37 + days * 13) % 2_147_483_647) + 1
+  const intraday = points <= 13
+
+  let s = ((Math.floor(currentValue) * 37 + points * 13) % 2_147_483_647) + 1
   function rand() {
     s = (s * 16807) % 2_147_483_647
     return (s - 1) / 2_147_483_646
   }
 
-  const vol = Math.max(0.004, Math.min(dailyVolatility, 0.025))
+  // Intraday vol is much smaller (daily vol spread over ~13 half-hour slots)
+  const vol = intraday
+    ? Math.max(0.001, Math.min(dailyVolatility / 4, 0.004))
+    : Math.max(0.004, Math.min(dailyVolatility, 0.025))
 
   const multipliers: number[] = []
-  for (let i = 0; i < days - 1; i++) {
+  for (let i = 0; i < points - 1; i++) {
     multipliers.push(1 + (rand() * 2 - 1) * vol)
   }
 
@@ -241,19 +247,29 @@ function generatePortfolioHistory(
   }
 
   const now = new Date()
-  // For longer periods show month labels, for short periods show day labels
-  const fmt: Intl.DateTimeFormatOptions =
-    days > 90
-      ? { month: "short", year: "2-digit" }
-      : { month: "short", day: "numeric" }
 
   return values.map((value, i) => {
-    const d = new Date(now)
-    d.setDate(now.getDate() - (days - 1 - i))
-    return {
-      date: d.toLocaleDateString("en-US", fmt),
-      value: Math.round(value * 100) / 100,
+    let label: string
+    if (intraday) {
+      // Map 13 slots evenly across 9:30am–4:00pm (6.5 trading hours)
+      const totalMins = 390 // 6.5 * 60
+      const mins = Math.round((i / (points - 1)) * totalMins)
+      const totalFromMidnight = 9 * 60 + 30 + mins
+      const h = Math.floor(totalFromMidnight / 60)
+      const m = totalFromMidnight % 60
+      const ampm = h < 12 ? "am" : "pm"
+      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+      label = `${h12}:${m.toString().padStart(2, "0")}${ampm}`
+    } else if (points > 90) {
+      const d = new Date(now)
+      d.setDate(now.getDate() - (points - 1 - i))
+      label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" })
+    } else {
+      const d = new Date(now)
+      d.setDate(now.getDate() - (points - 1 - i))
+      label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
     }
+    return { date: label, value: Math.round(value * 100) / 100 }
   })
 }
 
@@ -420,7 +436,7 @@ export function DashboardPage() {
   }, [holdings])
 
   const portfolioHistory = useMemo(
-    () => generatePortfolioHistory(portfolioTotal, avgDailyVol, DASH_PERIOD_DAYS[chartPeriod]),
+    () => generatePortfolioHistory(portfolioTotal, avgDailyVol, DASH_PERIOD_POINTS[chartPeriod]),
     [portfolioTotal, avgDailyVol, chartPeriod],
   )
 
