@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from "react"
 import {
   BookOpen,
   CheckCircle2,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Circle,
   GraduationCap,
   Send,
@@ -261,7 +262,6 @@ export function LearnPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => readSavedProgress())
-  const [openModuleId, setOpenModuleId] = useState(curriculum[0].id)
   const [selectedLessonId, setSelectedLessonId] = useState(allLessons[0].id)
 
   const nextLesson = useMemo(
@@ -274,6 +274,12 @@ export function LearnPage() {
 
   const completedCount = completedLessons.size
   const progressPercent = Math.round((completedCount / allLessons.length) * 100)
+  const selectedLessonIndex = allLessons.findIndex((lesson) => lesson.id === selectedLesson.id)
+  const previousLesson = selectedLessonIndex > 0 ? allLessons[selectedLessonIndex - 1] : null
+  const followingLesson =
+    selectedLessonIndex >= 0 && selectedLessonIndex < allLessons.length - 1
+      ? allLessons[selectedLessonIndex + 1]
+      : null
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -325,65 +331,64 @@ export function LearnPage() {
     })
   }
 
-  function selectLesson(moduleId: string, lessonId: string) {
-    setOpenModuleId(moduleId)
+  function selectLesson(lessonId: string) {
     setSelectedLessonId(lessonId)
+  }
+
+  function selectFlattenedLesson(lesson: typeof allLessons[number] | null) {
+    if (!lesson) return
+    selectLesson(lesson.id)
   }
 
   return (
     <div className="space-y-8">
-      <section className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-primary">
-          <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
-          Beginner investor course
-        </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-white">Learn in the right order.</h1>
-        <p className="text-sm leading-6 text-muted-foreground">
-          A guided path through the basics, with every lesson open whenever curiosity pulls you somewhere else.
-        </p>
-      </section>
-
       <Card className="overflow-hidden border-primary/20">
         <CardContent className="p-6">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-muted-foreground">Course progress</p>
-              <p className="mt-2 text-4xl font-semibold tracking-normal text-white">{progressPercent}%</p>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-primary">
+                <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
+                Beginner investor course
+              </div>
+              <h1 className="mt-4 text-4xl font-semibold tracking-normal text-white">Learn the basics calmly.</h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
+                One clear next step, short lessons, and a tutor when you want plain-English help.
+              </p>
             </div>
-            <div className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
-              Next: {nextLesson.title}
+            <div className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 sm:min-w-44">
+              <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">Progress</p>
+              <p className="mt-2 text-4xl font-semibold tracking-normal text-white">{progressPercent}%</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {completedCount} of {allLessons.length} lessons
+              </p>
             </div>
           </div>
           <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-primary" style={{ width: `${progressPercent}%` }} />
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            {completedCount} of {allLessons.length} lessons completed
-          </p>
+          <div className="mt-5 rounded-lg border border-primary/20 bg-primary/[0.08] p-4">
+            <p className="text-xs font-semibold uppercase tracking-normal text-primary">Continue learning</p>
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white">{nextLesson.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{nextLesson.moduleTitle}</p>
+              </div>
+              <Button type="button" onClick={() => selectFlattenedLesson(nextLesson)}>
+                Continue
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Current lesson</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{selectedLesson.moduleTitle}</Badge>
-            {selectedLesson.id === nextLesson.id ? <Badge>Recommended next</Badge> : null}
-          </div>
+        <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-normal text-white">{selectedLesson.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{selectedLesson.explanation}</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4">
-              <p className="text-xs font-semibold uppercase tracking-normal text-primary">Takeaway</p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.takeaway}</p>
-            </div>
-            <div className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4">
-              <p className="text-xs font-semibold uppercase tracking-normal text-primary">Example</p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.example}</p>
+            <CardTitle>Current lesson</CardTitle>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{selectedLesson.moduleTitle}</Badge>
+              {selectedLesson.id === nextLesson.id ? <Badge>Recommended next</Badge> : null}
             </div>
           </div>
           <Button type="button" onClick={() => toggleLessonComplete(selectedLesson.id)}>
@@ -399,156 +404,164 @@ export function LearnPage() {
               </>
             )}
           </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border-accent/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
-            Ask Clarity
-          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg border border-primary/20 bg-primary/[0.08] p-3">
-            <p className="text-xs font-semibold uppercase tracking-normal text-primary">Asking about</p>
-            <p className="mt-1 text-sm font-semibold text-white">{selectedLesson.title}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{selectedLesson.moduleTitle}</p>
+        <CardContent className="space-y-5">
+          <div>
+            <h2 className="text-3xl font-semibold tracking-normal text-white">{selectedLesson.title}</h2>
+            <p className="mt-4 text-sm leading-7 text-muted-foreground">{selectedLesson.explanation}</p>
           </div>
-          <form className="space-y-3" onSubmit={handleAskClarity}>
-            <textarea
-              className="min-h-28 w-full resize-none rounded-lg border border-border bg-background px-4 py-3 text-sm leading-6 text-white outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-              placeholder={`Ask about ${selectedLesson.title.toLowerCase()}...`}
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-            />
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs leading-5 text-muted-foreground">
-                Educational answers only. Clarity will avoid personalized buy or sell advice.
-              </p>
-              <Button disabled={loading} type="submit">
-                {loading ? "Thinking..." : "Ask"}
-                <Send className="h-4 w-4" aria-hidden="true" />
-              </Button>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-normal text-primary">Takeaway</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.takeaway}</p>
             </div>
-          </form>
+            <div className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-normal text-primary">Example</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.example}</p>
+            </div>
+          </div>
 
-          {error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-              <p className="text-sm font-semibold text-white">Clarity AI is unavailable</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">{error}</p>
+          <div className="rounded-lg border border-accent/20 bg-white/[0.025] p-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+              <h3 className="font-semibold text-white">Ask Clarity about this lesson</h3>
             </div>
-          ) : null}
+            <form className="mt-4 space-y-3" onSubmit={handleAskClarity}>
+              <textarea
+                className="min-h-20 w-full resize-none rounded-lg border border-border bg-background px-4 py-3 text-sm leading-6 text-white outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder={`Ask about ${selectedLesson.title.toLowerCase()}...`}
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Context: {selectedLesson.moduleTitle} / {selectedLesson.title}
+                </p>
+                <Button disabled={loading} type="submit">
+                  {loading ? "Thinking..." : "Ask"}
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+            </form>
 
-          {answer ? (
-            <div className="grid gap-3">
-              {[
-                ["Answer", answer.answer],
-                ["Key takeaway", answer.takeaway],
-                ["Example", answer.example],
-              ].map(([label, copy]) => (
-                <div
-                  key={label}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-normal text-primary">{label}</p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy}</p>
-                </div>
-              ))}
-            </div>
-          ) : null}
+            {error ? (
+              <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+                <p className="text-sm font-semibold text-white">Clarity AI is unavailable</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{error}</p>
+              </div>
+            ) : null}
+
+            {answer ? (
+              <div className="mt-4 grid gap-3">
+                {[
+                  ["Answer", answer.answer],
+                  ["Key takeaway", answer.takeaway],
+                  ["Example", answer.example],
+                ].map(([label, copy]) => (
+                  <div
+                    key={label}
+                    className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-normal text-primary">{label}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-white/[0.08] pt-4 sm:flex-row sm:justify-between">
+            <Button
+              disabled={!previousLesson}
+              type="button"
+              variant="ghost"
+              onClick={() => selectFlattenedLesson(previousLesson)}
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              Previous
+            </Button>
+            <Button
+              disabled={!followingLesson}
+              type="button"
+              variant="secondary"
+              onClick={() => selectFlattenedLesson(followingLesson)}
+            >
+              Next lesson
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
+      <section className="space-y-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-normal text-white">Learning plan</h2>
+          <h2 className="text-2xl font-semibold tracking-normal text-white">Browse the course</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Follow the highlighted next lesson, or open any module when you want to jump around.
+            Pick any lesson, or follow the highlighted next step.
           </p>
         </div>
 
-        {curriculum.map((module, moduleIndex) => {
-          const isOpen = openModuleId === module.id
-          const moduleCompleted = module.lessons.filter((lesson) => completedLessons.has(lesson.id)).length
+        <div className="space-y-3">
+          {curriculum.map((module, moduleIndex) => {
+            const moduleCompleted = module.lessons.filter((lesson) => completedLessons.has(lesson.id)).length
 
-          return (
-            <Card key={module.id}>
-              <button
-                className="flex w-full items-center justify-between gap-4 p-5 text-left"
-                type="button"
-                onClick={() => setOpenModuleId(isOpen ? "" : module.id)}
-              >
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-normal text-primary">
-                    Module {moduleIndex + 1}
-                  </p>
-                  <h3 className="mt-1 text-lg font-semibold text-white">{module.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {moduleCompleted} of {module.lessons.length} lessons completed
-                  </p>
-                </div>
-                <ChevronDown
-                  className={cn("h-5 w-5 text-muted-foreground transition-transform", isOpen && "rotate-180")}
-                  aria-hidden="true"
-                />
-              </button>
+            return (
+              <Card key={module.id}>
+                <CardContent className="p-4">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-normal text-primary">
+                        Module {moduleIndex + 1}
+                      </p>
+                      <h3 className="mt-1 text-base font-semibold text-white">{module.title}</h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {moduleCompleted} of {module.lessons.length} complete
+                    </p>
+                  </div>
 
-              {isOpen ? (
-                <CardContent className="space-y-3">
-                  {module.lessons.map((lesson) => {
-                    const completed = completedLessons.has(lesson.id)
-                    const selected = selectedLesson.id === lesson.id
-                    const recommended = nextLesson.id === lesson.id
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {module.lessons.map((lesson) => {
+                      const completed = completedLessons.has(lesson.id)
+                      const selected = selectedLesson.id === lesson.id
+                      const recommended = nextLesson.id === lesson.id
 
-                    return (
-                      <div
-                        key={lesson.id}
-                        className={cn(
-                          "rounded-lg border bg-white/[0.035] p-4 transition-colors",
-                          selected ? "border-primary/50" : "border-white/[0.08]",
-                          recommended && "bg-primary/[0.08]",
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <button
-                            className="flex flex-1 gap-3 text-left"
-                            type="button"
-                            onClick={() => selectLesson(module.id, lesson.id)}
-                          >
-                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background">
-                              {completed ? (
-                                <CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />
-                              ) : (
-                                <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-semibold text-white">{lesson.title}</p>
-                                {recommended ? <Badge>Next</Badge> : null}
-                              </div>
-                              <p className="mt-1 text-sm leading-6 text-muted-foreground">{lesson.takeaway}</p>
-                            </div>
-                          </button>
-                          <Button
-                            size="sm"
-                            type="button"
-                            variant={completed ? "secondary" : "ghost"}
-                            onClick={() => toggleLessonComplete(lesson.id)}
-                          >
-                            {completed ? "Done" : "Mark"}
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })}
+                      return (
+                        <button
+                          key={lesson.id}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors",
+                            selected
+                              ? "border-primary/60 bg-primary/[0.10]"
+                              : "border-white/[0.08] bg-white/[0.025] hover:bg-white/[0.06]",
+                            recommended && !selected && "border-primary/30 bg-primary/[0.06]",
+                          )}
+                          type="button"
+                          onClick={() => selectLesson(lesson.id)}
+                        >
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-background">
+                            {completed ? (
+                              <CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                            ) : (
+                              <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-white">{lesson.title}</span>
+                              {recommended ? <Badge>Next</Badge> : null}
+                            </span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </CardContent>
-              ) : null}
-            </Card>
-          )
-        })}
-      </div>
+              </Card>
+            )
+          })}
+        </div>
+      </section>
     </div>
   )
 }
