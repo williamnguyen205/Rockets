@@ -46,8 +46,8 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        glow: "0 0 50px rgba(52, 168, 90, 0.22)",
-        panel: "0 24px 80px rgba(0, 0, 0, 0.42)",
+        glow: "0 0 0 3px rgba(159, 214, 124, 0.24)",
+        panel: "0 16px 40px rgba(8, 13, 33, 0.12)",
       },
     },
   },

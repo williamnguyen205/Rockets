@@ -1,66 +1,88 @@
+import { useEffect } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
+import { LogOut } from "lucide-react"
+import { ClarityIcon } from "@/components/ClarityLogo"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { to: "/", label: "Dashboard", end: true },
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/stocks", label: "Stocks" },
   { to: "/scenarios", label: "Scenarios" },
   { to: "/learn", label: "Learn" },
 ]
 
+function shouldUseDarkTheme() {
+  if (typeof window === "undefined") return false
+
+  const savedTheme = window.localStorage.getItem("clarity-theme")
+  if (savedTheme === "dark") return true
+  if (savedTheme === "light") return false
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+}
+
 export function AppShell() {
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", shouldUseDarkTheme())
+  }, [])
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="fixed inset-x-0 top-0 z-50 h-[60px] border-b border-border bg-card/90 backdrop-blur-2xl">
-        <nav className="mx-auto grid h-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5">
+      <header className="fixed inset-x-0 top-0 z-50 h-[72px] border-b border-border/80 bg-background/95 backdrop-blur-xl">
+        <nav className="mx-auto grid h-full max-w-[980px] grid-cols-[1fr_auto_1fr] items-center px-5">
           <Link
-            className="text-lg font-semibold tracking-normal text-primary transition-colors hover:text-primary/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            to="/"
+            className="inline-flex items-center gap-3 text-primary transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/35"
+            to="/dashboard"
+            aria-label="Clarity dashboard"
           >
-            Clarity
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-card text-primary shadow-sm">
+              <ClarityIcon className="h-8 w-8" />
+            </span>
+            <span className="text-xl font-bold tracking-normal text-primary">Clarity</span>
           </Link>
 
-          <div className="flex items-center gap-4 sm:gap-7">
+          <div className="flex items-center gap-1 rounded-full border border-border/80 bg-card p-1 shadow-sm">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    "relative flex h-[60px] items-center text-sm font-medium text-muted-foreground transition-colors duration-200 hover:text-foreground",
-                    isActive && "text-white",
+                    "rounded-full px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:text-foreground sm:px-4 sm:text-sm",
+                    isActive && "bg-primary text-primary-foreground",
                   )
                 }
               >
-                {({ isActive }) => (
-                  <>
-                    {item.label}
-                    <span
-                      className={cn(
-                        "absolute bottom-0 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-primary transition-all duration-300",
-                        isActive && "w-6",
-                      )}
-                    />
-                  </>
-                )}
+                {item.label}
               </NavLink>
             ))}
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-2">
             <NavLink
               aria-label="Account settings"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-white shadow-glow transition-colors hover:border-primary hover:text-primary"
+              className={({ isActive }) =>
+                cn(
+                  "flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-xs font-semibold text-primary shadow-sm transition-colors hover:bg-secondary/40",
+                  isActive && "border-primary bg-secondary/60",
+                )
+              }
               to="/account"
             >
               CL
             </NavLink>
+            <Link
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-border/80 bg-card px-4 text-sm font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/35"
+              to="/"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Sign out</span>
+            </Link>
           </div>
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-[720px] px-5 pb-20 pt-[104px]">
+      <main className="mx-auto w-full max-w-[820px] px-5 pb-20 pt-[112px]">
         <Outlet />
       </main>
     </div>

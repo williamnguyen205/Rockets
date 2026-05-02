@@ -4,27 +4,50 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
-    --background: 220 15% 12%;
-    --foreground: 0 0% 90%;
-    --card: 197 7% 20%;
-    --card-foreground: 0 0% 90%;
-    --popover: 197 7% 20%;
-    --popover-foreground: 0 0% 90%;
-    --primary: 140 53% 43%;
+    color-scheme: light;
+    --background: 38 50% 92%;
+    --foreground: 228 61% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 228 61% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 228 61% 8%;
+    --primary: 228 61% 8%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 207 44% 49%;
-    --secondary-foreground: 0 0% 90%;
-    --muted: 0 0% 27%;
-    --muted-foreground: 0 0% 64%;
-    --accent: 219 79% 66%;
-    --accent-foreground: 0 0% 90%;
-    --destructive: 352 79% 58%;
-    --destructive-foreground: 210 28% 96%;
-    --border: 0 0% 27%;
-    --input: 0 0% 27%;
-    --ring: 140 53% 43%;
-    --radius: 0.75rem;
+    --secondary: 99 64% 74%;
+    --secondary-foreground: 228 61% 8%;
+    --muted: 36 42% 87%;
+    --muted-foreground: 219 18% 46%;
+    --accent: 199 82% 49%;
+    --accent-foreground: 228 61% 8%;
+    --destructive: 352 79% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 228 61% 8%;
+    --input: 214 35% 84%;
+    --ring: 99 64% 74%;
+    --radius: 1.25rem;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 224 35% 8%;
+    --foreground: 38 50% 92%;
+    --card: 224 28% 13%;
+    --card-foreground: 38 50% 92%;
+    --popover: 224 28% 13%;
+    --popover-foreground: 38 50% 92%;
+    --primary: 38 50% 92%;
+    --primary-foreground: 224 35% 8%;
+    --secondary: 99 38% 36%;
+    --secondary-foreground: 38 50% 92%;
+    --muted: 224 22% 18%;
+    --muted-foreground: 219 18% 66%;
+    --accent: 199 72% 55%;
+    --accent-foreground: 224 35% 8%;
+    --destructive: 352 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 221 20% 32%;
+    --input: 221 20% 32%;
+    --ring: 99 42% 48%;
   }
 
   * {
@@ -50,12 +73,11 @@
     z-index: -1;
     content: "";
     background:
-      linear-gradient(180deg, rgba(52, 168, 90, 0.11), transparent 34%),
-      linear-gradient(90deg, rgba(229, 229, 229, 0.035) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(229, 229, 229, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.045) 1px, transparent 1px),
+      linear-gradient(180deg, hsl(var(--foreground) / 0.045) 1px, transparent 1px),
       hsl(var(--background));
-    background-size: auto, 56px 56px, 56px 56px, auto;
-    mask-image: linear-gradient(to bottom, black 0%, black 58%, transparent 100%);
+    background-size: 42px 42px, 42px 42px, auto;
+    mask-image: linear-gradient(to bottom, black 0%, black 48%, transparent 100%);
   }
 
   a {
