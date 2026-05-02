@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils"
 
 const navItems = [
   { to: "/", label: "Dashboard", end: true },
+  { to: "/stocks", label: "Stocks" },
   { to: "/scenarios", label: "Scenarios" },
   { to: "/learn", label: "Learn" },
 ]
@@ -14,7 +15,7 @@ export function AppShell() {
         <nav className="mx-auto grid h-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-5">
           <div className="text-lg font-semibold tracking-normal text-primary">Clarity</div>
 
-          <div className="flex items-center gap-7">
+          <div className="flex items-center gap-4 sm:gap-7">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}

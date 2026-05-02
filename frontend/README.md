@@ -1,4 +1,32 @@
-# React + TypeScript + Vite
+# Clarity Frontend
+
+Vite + React + TypeScript frontend for Clarity.
+
+## Run
+
+```bash
+npm install
+npm run dev
+```
+
+The Stocks page calls the FastAPI backend at `http://127.0.0.1:8000` by default.
+
+To use a different backend URL, create a `.env.local` file:
+
+```bash
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+## Pages
+
+- Dashboard
+- Stocks
+- Scenarios
+- Learn
+
+---
+
+# Vite Notes
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

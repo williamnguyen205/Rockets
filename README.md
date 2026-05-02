@@ -9,7 +9,7 @@ clarity/
   frontend/            Vite + React + TypeScript app
     src/
       components/      App shell and shadcn-style UI primitives
-      pages/           Dashboard, Scenarios, Learn
+      pages/           Dashboard, Stocks, Scenarios, Learn
       store/           Zustand portfolio mock data
       lib/             Shared frontend utilities
   backend/             FastAPI backend
@@ -51,6 +51,19 @@ uvicorn main:app --reload
 
 The backend runs on `http://127.0.0.1:8000`.
 
+To use the frontend stock lookup page, run the backend and frontend at the same time:
+
+```bash
+# terminal 1
+cd backend
+source .venv/bin/activate
+uvicorn main:app --reload
+
+# terminal 2
+cd frontend
+npm run dev
+```
+
 ## Root Scripts
 
 Run these from the root `clarity/` directory:
@@ -84,3 +97,4 @@ curl http://127.0.0.1:8000/stock/AAPL
 - Keep server/API code inside `backend`.
 - Shared types can eventually live in a `shared/` folder if both frontend and backend need them.
 - Replace frontend mock data in `frontend/src/store/portfolio.ts` with API calls when you connect the app to the backend.
+- The stock lookup page calls `http://127.0.0.1:8000` by default. Override with `VITE_API_BASE_URL` if needed.
