@@ -492,11 +492,16 @@ function SuggestedTradesCard({
 
 export function ScenariosPage() {
   const whatIfRef = useRef<HTMLDivElement>(null)
-  const { holdings, cashBalance, monthlyContribution, profile, timeline, goal, updateProfileSettings, buyStock, sellStock } =
+  const { holdings, cashBalance, monthlyContribution, profile, timeline, goal, updateProfileSettings, buyStock, sellStock, addPracticeCash, loadSamplePortfolio } =
     usePortfolioStore()
   const [selectedScenarioId, setSelectedScenarioId] = useState<ScenarioId>("market_drop_20")
   const [reviewedScenarioId, setReviewedScenarioId] = useState<ScenarioId | null>(null)
+<<<<<<< HEAD
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
+=======
+  const [compareScenarioId, setCompareScenarioId] = useState<ScenarioId>("inflation_high")
+  const [showAdvanced, setShowAdvanced] = useState(false)
+>>>>>>> 0fa2481 (rubric gap)
   const [practiceMessage, setPracticeMessage] = useState("")
   const [scenarioPrompt, setScenarioPrompt] = useState("")
   const [simulation, setSimulation] = useState<ScenarioSimulationAnswer | null>(null)
@@ -519,6 +524,17 @@ export function ScenariosPage() {
   )
   const selectedScenario = scenarioPlans.find((item) => item.definition.id === selectedScenarioId) ?? scenarioPlans[0]
   const selectedPlan = selectedScenario.plan
+  const compareCandidates = useMemo(
+    () => SCENARIO_DEFINITIONS.filter((scenario) => scenario.id !== selectedScenarioId),
+    [selectedScenarioId],
+  )
+  const effectiveCompareScenarioId =
+    compareCandidates.some((scenario) => scenario.id === compareScenarioId)
+      ? compareScenarioId
+      : compareCandidates[0]?.id ?? selectedScenarioId
+  const compareScenario =
+    scenarioPlans.find((item) => item.definition.id === effectiveCompareScenarioId) ?? scenarioPlans[1] ?? scenarioPlans[0]
+  const comparePlan = compareScenario.plan
   const canApplyPracticePlan = reviewedScenarioId === selectedScenarioId && selectedPlan.trades.length > 0
 
   const startingValue = getPortfolioValue(holdings, cashBalance)
@@ -736,6 +752,45 @@ export function ScenariosPage() {
 
   return (
     <div className="space-y-8">
+      {holdings.length === 0 && cashBalance <= 0 ? (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle>Start in 60 seconds</CardTitle>
+            <CardDescription>
+              Add quick practice data first so every scenario shows concrete amounts, costs, and trade steps.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ol className="space-y-2 text-sm text-foreground">
+              <li>1. Add practice cash (so rebalances can be sized).</li>
+              <li>2. Add sample holdings (so risk and concentration can be measured).</li>
+              <li>3. Run two scenarios and compare before/after mixes.</li>
+            </ol>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  const result = addPracticeCash(10000)
+                  setPracticeMessage(result.message)
+                }}
+              >
+                Add $10,000 practice cash
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  const result = loadSamplePortfolio()
+                  setPracticeMessage(result.message)
+                }}
+              >
+                Load sample beginner portfolio
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <section className="space-y-3">
         <div className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1 text-xs font-medium text-primary">
           <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
@@ -745,6 +800,14 @@ export function ScenariosPage() {
         <p className="text-sm leading-6 text-muted-foreground">
           Describe any market or life event. Clarity AI turns it into a portfolio simulation using your saved plan.
         </p>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant={showAdvanced ? "secondary" : "default"} onClick={() => setShowAdvanced(false)}>
+            Beginner view
+          </Button>
+          <Button type="button" variant={showAdvanced ? "default" : "secondary"} onClick={() => setShowAdvanced(true)}>
+            Advanced view
+          </Button>
+        </div>
       </section>
 
       <Card>
@@ -885,12 +948,22 @@ export function ScenariosPage() {
                     </p>
                   </div>
                   <div className="rounded-md bg-muted/45 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Estimated tax impact (if taxable)</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {formatCurrency(selectedPlan.transparency.estimatedTaxImpactUsd)} estimated
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-muted/45 p-3">
                     <p className="text-xs font-semibold text-muted-foreground">Fund fee note</p>
                     <p className="mt-1 text-sm leading-6 text-foreground">{selectedPlan.transparency.fundFeeNote}</p>
                   </div>
                   <div className="rounded-md bg-muted/45 p-3">
                     <p className="text-xs font-semibold text-muted-foreground">Tax awareness</p>
                     <p className="mt-1 text-sm leading-6 text-foreground">{selectedPlan.transparency.taxNote}</p>
+                  </div>
+                  <div className="rounded-md bg-muted/45 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Assumption note</p>
+                    <p className="mt-1 text-sm leading-6 text-foreground">{selectedPlan.transparency.accountAssumptionNote}</p>
                   </div>
                 </div>
               </div>
@@ -905,6 +978,14 @@ export function ScenariosPage() {
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              <div className="rounded-md border border-border bg-card p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Confidence scale</p>
+                <p className="mt-2 text-sm leading-6 text-foreground">
+                  High means this scenario strongly matches your saved plan and has fewer uncertain assumptions.
+                  Medium means useful guidance with moderate uncertainty. Low means the model has limited inputs.
+                </p>
               </div>
 
               <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
@@ -950,7 +1031,11 @@ export function ScenariosPage() {
                   />
                 ) : null}
                 {practiceMessage ? (
-                  <p className="mt-3 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground">
+                  <p
+                    aria-live="polite"
+                    className="mt-3 rounded-md border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground"
+                    role="status"
+                  >
                     {practiceMessage}
                   </p>
                 ) : null}
@@ -962,6 +1047,80 @@ export function ScenariosPage() {
           </CardContent>
         </Card>
       </section>
+
+      {showAdvanced ? (
+        <section className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Calculation breakdown</CardTitle>
+              <CardDescription>Exactly how this scenario recommendation was computed.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 lg:grid-cols-3">
+              <div className="rounded-md border border-border bg-muted/30 p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Inputs</p>
+                <ul className="mt-2 space-y-2 text-sm text-foreground">
+                  {selectedPlan.calculation.inputs.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-md border border-border bg-muted/30 p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Formulas</p>
+                <ul className="mt-2 space-y-2 text-sm text-foreground">
+                  {selectedPlan.calculation.formulas.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-md border border-border bg-muted/30 p-4">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Output</p>
+                <p className="mt-2 text-sm leading-6 text-foreground">{selectedPlan.calculation.output}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Scenario comparison</CardTitle>
+              <CardDescription>Compare two scenario plans side by side before choosing a practice rebalance.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <label className="block">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Compare against</span>
+                <select
+                  className="mt-2 h-11 w-full rounded-md border border-input bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-ring/20"
+                  value={effectiveCompareScenarioId}
+                  onChange={(event) => setCompareScenarioId(event.target.value as ScenarioId)}
+                >
+                  {compareCandidates.map((scenario) => (
+                    <option key={scenario.id} value={scenario.id}>
+                      {scenario.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {[
+                  { label: "Primary", title: selectedScenario.definition.title, plan: selectedPlan },
+                  { label: "Comparison", title: compareScenario.definition.title, plan: comparePlan },
+                ].map((panel) => (
+                  <div key={panel.label} className="rounded-md border border-border bg-card p-4">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">{panel.label}</p>
+                    <h3 className="mt-1 text-base font-semibold text-foreground">{panel.title}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      After mix: {panel.plan.after.stocks}% stocks / {panel.plan.after.funds}% funds / {panel.plan.after.cash}% cash
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Cost: {formatCurrency(panel.plan.transparency.estimatedTradingCostUsd)} · Tax: {formatCurrency(panel.plan.transparency.estimatedTaxImpactUsd)}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">Confidence: {panel.plan.transparency.confidence}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -1088,7 +1247,11 @@ export function ScenariosPage() {
             </div>
 
             {simulationError ? (
-              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive" role="alert">
+              <p
+                aria-live="assertive"
+                className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive"
+                role="alert"
+              >
                 {simulationError}
               </p>
             ) : null}

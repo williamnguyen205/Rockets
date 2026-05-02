@@ -66,7 +66,7 @@ const guideSteps: GuideStep[] = [
     eyebrow: "Practice decisions",
     title: "Run scenarios before reacting.",
     copy:
-      "When markets get scary, Scenarios turns a what-if into a reviewable plan with costs, tax awareness, and what could go wrong.",
+      "To prepare for when markets get scary, the Scenarios tab turns a what-if into a reviewable plan with costs, tax awareness, and what could go wrong.",
     bullets: [
       "Review the reason before any simulated rebalance.",
       "Compare before and after allocation.",
