@@ -90,6 +90,7 @@ npm run lint           # lint the frontend
 ```txt
 GET /health
 POST /ai/learn
+POST /ai/scenario-explain
 GET /stock/{ticker}
 GET /stock/{ticker}/history?period=1mo
 GET /stocks/batch?tickers=AAPL,GOOGL,TSLA
@@ -102,6 +103,9 @@ curl http://127.0.0.1:8000/stock/AAPL
 curl -X POST http://127.0.0.1:8000/ai/learn \
   -H "Content-Type: application/json" \
   -d '{"question":"What is diversification?"}'
+curl -X POST http://127.0.0.1:8000/ai/scenario-explain \
+  -H "Content-Type: application/json" \
+  -d '{"scenarioId":"market_drop_20","scenarioTitle":"What if the market drops about 20%?","portfolioSummary":{"totalValueUsd":10000,"cashPct":10,"stocksPct":60,"fundsPct":30,"profile":"Balanced","timeline":"5-10 years","goal":"Wealth Growth","monthlyContribution":100,"topHoldings":[]},"suggestedTrade":"• Stay diversified\n\nGeneral guidance."}'
 ```
 
 ## Development Notes

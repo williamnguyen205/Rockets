@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   Area,
   AreaChart,
@@ -8,9 +8,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { ArrowRight, SlidersHorizontal, TrendingUp } from "lucide-react"
+import { ArrowRight, Loader2, SlidersHorizontal, Sparkles, TrendingUp, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
+import { explainScenarioAdjustment, type ScenarioExplainAnswer } from "@/lib/api"
+import {
+  buildScenarioPortfolioSnapshot,
+  formatSuggestedTradeForApi,
+  SCENARIO_DEFINITIONS,
+  scenarioSnapshotToApiPayload,
+  suggestRebalancingStrategy,
+  type ScenarioId,
+} from "@/lib/scenarioPortfolio"
 import {
   getPortfolioValue,
   type InvestmentTimeline,
@@ -75,8 +85,84 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
+function AssumptionField({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <label className="space-y-2">
+      <span className="text-xs font-semibold uppercase text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function AssumptionSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...props}
+      className={cn(
+        "h-11 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30",
+        props.className,
+      )}
+    />
+  )
+}
+
+function AssumptionTextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={cn(
+        "h-11 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30",
+        props.className,
+      )}
+    />
+  )
+}
+
+function TutorSection({
+  title,
+  body,
+}: {
+  title: string
+  body: string
+}) {
+  return (
+    <div className="rounded-xl border border-border/80 bg-muted/30 px-4 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-primary">{title}</p>
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{body}</p>
+    </div>
+  )
+}
+
 export function ScenariosPage() {
-  const { holdings, cashBalance, monthlyContribution, profile, timeline } = usePortfolioStore()
+  const whatIfRef = useRef<HTMLDivElement>(null)
+  const { holdings, cashBalance, monthlyContribution, profile, timeline, goal, updateProfileSettings } =
+    usePortfolioStore()
+  const [selectedScenarioId, setSelectedScenarioId] = useState<ScenarioId | null>(null)
+  const [tutorResult, setTutorResult] = useState<ScenarioExplainAnswer | null>(null)
+  const [tutorError, setTutorError] = useState<string | null>(null)
+  const [tutorLoading, setTutorLoading] = useState(false)
+
+  const snapshot = useMemo(
+    () =>
+      buildScenarioPortfolioSnapshot(holdings, cashBalance, profile, timeline, goal, monthlyContribution),
+    [holdings, cashBalance, profile, timeline, goal, monthlyContribution],
+  )
+
+  const selectedDefinition = selectedScenarioId
+    ? SCENARIO_DEFINITIONS.find((s) => s.id === selectedScenarioId)
+    : undefined
+
+  const suggestion = useMemo(() => {
+    if (!selectedScenarioId) return null
+    return suggestRebalancingStrategy(selectedScenarioId, snapshot)
+  }, [selectedScenarioId, snapshot])
+
   const startingValue = getPortfolioValue(holdings, cashBalance)
   const years = timelineYears[timeline]
   const baselineReturn = annualReturnByProfile[profile]
@@ -107,7 +193,7 @@ export function ScenariosPage() {
   )
   const finalBaseline = projection[projection.length - 1].baseline
   const finalOptimized = projection[projection.length - 1].optimized
-  const scenarios = [
+  const summaryCards = [
     {
       title:
         monthlyContribution > 0
@@ -131,6 +217,36 @@ export function ScenariosPage() {
     },
   ]
 
+  const scrollToWhatIf = () => {
+    whatIfRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  const selectScenario = (id: ScenarioId) => {
+    setSelectedScenarioId(id)
+    setTutorResult(null)
+    setTutorError(null)
+  }
+
+  const runTutor = async () => {
+    if (!selectedScenarioId || !selectedDefinition || !suggestion) return
+    setTutorLoading(true)
+    setTutorError(null)
+    setTutorResult(null)
+    try {
+      const result = await explainScenarioAdjustment({
+        scenarioId: selectedScenarioId,
+        scenarioTitle: selectedDefinition.title,
+        portfolioSummary: scenarioSnapshotToApiPayload(snapshot),
+        suggestedTrade: formatSuggestedTradeForApi(suggestion),
+      })
+      setTutorResult(result)
+    } catch (e) {
+      setTutorError(e instanceof Error ? e.message : "Could not reach the tutor.")
+    } finally {
+      setTutorLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
       <section className="space-y-3">
@@ -143,6 +259,68 @@ export function ScenariosPage() {
           Model how contributions, cash drag, and risk adjustments could change the shape of your portfolio.
         </p>
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserRound className="h-5 w-5 text-primary" aria-hidden="true" />
+            Your plan assumptions
+          </CardTitle>
+          <CardDescription>
+            Adjust these to see the projection and what-if ideas update in real time. They also match your dashboard
+            health score.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <AssumptionField label="Investor profile">
+            <AssumptionSelect
+              value={profile}
+              onChange={(event) =>
+                updateProfileSettings({
+                  profile: event.target.value as InvestorProfile,
+                  timeline,
+                  monthlyContribution,
+                })
+              }
+            >
+              <option value="Conservative">Conservative</option>
+              <option value="Balanced">Balanced</option>
+              <option value="Growth">Growth</option>
+              <option value="Aggressive">Aggressive</option>
+            </AssumptionSelect>
+          </AssumptionField>
+          <AssumptionField label="Timeline">
+            <AssumptionSelect
+              value={timeline}
+              onChange={(event) =>
+                updateProfileSettings({
+                  profile,
+                  timeline: event.target.value as InvestmentTimeline,
+                  monthlyContribution,
+                })
+              }
+            >
+              <option value="1-3 years">1-3 years</option>
+              <option value="3-5 years">3-5 years</option>
+              <option value="5-10 years">5-10 years</option>
+              <option value="10+ years">10+ years</option>
+            </AssumptionSelect>
+          </AssumptionField>
+          <AssumptionField label="Monthly contribution">
+            <AssumptionTextInput
+              inputMode="numeric"
+              value={monthlyContribution === 0 ? "" : String(monthlyContribution)}
+              onChange={(event) =>
+                updateProfileSettings({
+                  profile,
+                  timeline,
+                  monthlyContribution: Math.max(0, Number(event.target.value) || 0),
+                })
+              }
+            />
+          </AssumptionField>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -202,7 +380,7 @@ export function ScenariosPage() {
       </Card>
 
       <div className="grid gap-4">
-        {scenarios.map((scenario) => (
+        {summaryCards.map((scenario) => (
           <Card key={scenario.title} className="transition-transform hover:-translate-y-0.5">
             <CardContent className="flex items-center justify-between gap-5 p-5">
               <div>
@@ -217,8 +395,86 @@ export function ScenariosPage() {
         ))}
       </div>
 
-      <Button className="w-full" size="lg">
-        Run custom scenario
+      <div ref={whatIfRef} className="scroll-mt-8 space-y-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-xl font-semibold text-foreground">What-if rebalancing</h2>
+          <p className="text-sm text-muted-foreground">
+            Pick a real-life worry. Clarity suggests a simple plan you could discuss with a professional—then the tutor explains it in plain English.
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {SCENARIO_DEFINITIONS.map((def) => {
+            const active = selectedScenarioId === def.id
+            return (
+              <button
+                key={def.id}
+                type="button"
+                onClick={() => selectScenario(def.id)}
+                className={`rounded-2xl border-2 p-4 text-left transition-colors ${
+                  active
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border bg-card hover:border-primary/40"
+                }`}
+              >
+                <p className="text-sm font-semibold leading-snug text-foreground">{def.title}</p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{def.description}</p>
+              </button>
+            )
+          })}
+        </div>
+
+        {selectedScenarioId && suggestion && selectedDefinition ? (
+          <Card className="border-primary/25">
+            <CardHeader>
+              <CardTitle className="text-lg">Recommended plan</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Based on your saved goal ({goal}), timeline ({timeline}), and today&apos;s mix—not a prediction of the future.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-foreground">
+                {suggestion.bullets.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">How we decided: </span>
+                {suggestion.rationale}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button type="button" onClick={runTutor} disabled={tutorLoading} className="gap-2">
+                  {tutorLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  Explain with Clarity Tutor
+                </Button>
+                <p className="text-xs text-muted-foreground">Requires the Clarity API and Ollama running locally.</p>
+              </div>
+              {tutorError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {tutorError}
+                </p>
+              ) : null}
+              {tutorResult ? (
+                <div className="space-y-3 pt-2">
+                  <TutorSection title="The why" body={tutorResult.theWhy} />
+                  <TutorSection title="The risk" body={tutorResult.theRisk} />
+                  <TutorSection title="The move" body={tutorResult.theMove} />
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Educational only—not tax, legal, or personal investment advice. Talk to a qualified professional before you trade.
+                  </p>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
+
+      <Button className="w-full" size="lg" type="button" onClick={scrollToWhatIf}>
+        Try a what-if scenario
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Button>
     </div>

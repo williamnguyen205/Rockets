@@ -31,6 +31,24 @@ export type LearnQuestionContext = {
   lessonTitle?: string
 }
 
+export type ScenarioPortfolioSummaryPayload = {
+  totalValueUsd: number
+  cashPct: number
+  stocksPct: number
+  fundsPct: number
+  profile: string
+  timeline: string
+  goal: string
+  monthlyContribution: number
+  topHoldings: { symbol: string; name: string; pctRounded: number }[]
+}
+
+export type ScenarioExplainAnswer = {
+  theWhy: string
+  theRisk: string
+  theMove: string
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -66,5 +84,20 @@ export async function askLearnQuestion(question: string, context?: LearnQuestion
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ question, ...context }),
+  })
+}
+
+export async function explainScenarioAdjustment(payload: {
+  scenarioId: string
+  scenarioTitle: string
+  portfolioSummary: ScenarioPortfolioSummaryPayload
+  suggestedTrade: string
+}) {
+  return fetchJson<ScenarioExplainAnswer>("/ai/scenario-explain", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
   })
 }
