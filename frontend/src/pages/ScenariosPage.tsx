@@ -26,6 +26,11 @@ const scenarios = [
   { title: "Shift cash into funds", value: "+1.4%", copy: "Projected annual return change" },
 ]
 
+const chartSeries = [
+  { key: "baseline", label: "Current path", color: "#4682b4" },
+  { key: "optimized", label: "Optimized path", color: "#34a85a" },
+]
+
 export function ScenariosPage() {
   return (
     <div className="space-y-8">
@@ -46,6 +51,20 @@ export function ScenariosPage() {
           <TrendingUp className="h-5 w-5 text-primary" aria-hidden="true" />
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex flex-wrap gap-3">
+            {chartSeries.map((series) => (
+              <div
+                key={series.key}
+                className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs font-medium text-muted-foreground"
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: series.color }}
+                />
+                {series.label}
+              </div>
+            ))}
+          </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={projection} margin={{ left: 0, right: 8, top: 10, bottom: 0 }}>
@@ -69,7 +88,10 @@ export function ScenariosPage() {
                     borderRadius: 8,
                     color: "#fff",
                   }}
-                  formatter={(value) => [`$${Number(value).toLocaleString()}`, ""]}
+                  formatter={(value, name) => [
+                    `$${Number(value).toLocaleString()}`,
+                    name === "optimized" ? "Optimized path" : "Current path",
+                  ]}
                 />
                 <Area dataKey="baseline" fill="url(#baseline)" stroke="#4682b4" strokeWidth={2} type="monotone" />
                 <Area dataKey="optimized" fill="url(#optimized)" stroke="#34a85a" strokeWidth={2} type="monotone" />
