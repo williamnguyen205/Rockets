@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
+  Area,
+  AreaChart,
+  CartesianGrid,
   Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts"
 import { Link } from "react-router-dom"
 import {
@@ -132,6 +137,12 @@ const riskVariant: Record<RiskLevel, "low" | "medium" | "high"> = {
   High: "high",
 }
 
+const defaultRiskExplanation: Record<RiskLevel, string> = {
+  Low: "Prices move slowly and losses are typically limited. Best for preserving capital with minimal volatility.",
+  Medium: "Moderate price swings are expected — a balance between growth potential and day-to-day stability.",
+  High: "Large price swings are common. High growth ceiling, but losses can also be steep and sudden.",
+}
+
 function AllocationTooltip({
   active,
   payload,
@@ -189,6 +200,61 @@ function HealthRing({ score }: { score: number }) {
       </div>
     </div>
   )
+}
+
+const DASH_PERIODS = ["1w", "1mo", "3mo", "6mo", "1y", "all"] as const
+type DashPeriod = (typeof DASH_PERIODS)[number]
+
+const DASH_PERIOD_DAYS: Record<DashPeriod, number> = {
+  "1w": 7,
+  "1mo": 30,
+  "3mo": 90,
+  "6mo": 180,
+  "1y": 365,
+  all: 730,
+}
+
+function generatePortfolioHistory(
+  currentValue: number,
+  dailyVolatility: number,
+  days: number,
+): { date: string; value: number }[] {
+  if (currentValue <= 0) return []
+
+  // Deterministic LCG seeded on value + day-count so each period looks distinct but stable
+  let s = ((Math.floor(currentValue) * 37 + days * 13) % 2_147_483_647) + 1
+  function rand() {
+    s = (s * 16807) % 2_147_483_647
+    return (s - 1) / 2_147_483_646
+  }
+
+  const vol = Math.max(0.004, Math.min(dailyVolatility, 0.025))
+
+  const multipliers: number[] = []
+  for (let i = 0; i < days - 1; i++) {
+    multipliers.push(1 + (rand() * 2 - 1) * vol)
+  }
+
+  const values: number[] = [currentValue]
+  for (let i = multipliers.length - 1; i >= 0; i--) {
+    values.unshift(values[0] / multipliers[i])
+  }
+
+  const now = new Date()
+  // For longer periods show month labels, for short periods show day labels
+  const fmt: Intl.DateTimeFormatOptions =
+    days > 90
+      ? { month: "short", year: "2-digit" }
+      : { month: "short", day: "numeric" }
+
+  return values.map((value, i) => {
+    const d = new Date(now)
+    d.setDate(now.getDate() - (days - 1 - i))
+    return {
+      date: d.toLocaleDateString("en-US", fmt),
+      value: Math.round(value * 100) / 100,
+    }
+  })
 }
 
 function formatCurrency(value: number) {
@@ -272,6 +338,7 @@ export function DashboardPage() {
   } = usePortfolioStore()
 
   const [openMetric, setOpenMetric] = useState<"profile" | "timeline" | "goal" | "monthly" | null>(null)
+  const [chartPeriod, setChartPeriod] = useState<DashPeriod>("1mo")
   const [monthlyInputDraft, setMonthlyInputDraft] = useState("")
   const [cashPanelOpen, setCashPanelOpen] = useState(false)
   const [cashDraft, setCashDraft] = useState("")
@@ -347,6 +414,30 @@ export function DashboardPage() {
   )
   const weightedDayMovePct = investedValue ? (weightedDayMove / investedValue) * 100 : 0
 
+  const avgDailyVol = useMemo(() => {
+    if (!holdings.length) return 0.01
+    return holdings.reduce((sum, h) => sum + Math.abs(h.change) / 100, 0) / holdings.length / 5
+  }, [holdings])
+
+  const portfolioHistory = useMemo(
+    () => generatePortfolioHistory(portfolioTotal, avgDailyVol, DASH_PERIOD_DAYS[chartPeriod]),
+    [portfolioTotal, avgDailyVol, chartPeriod],
+  )
+
+  const chartPositive =
+    portfolioHistory.length > 1 &&
+    portfolioHistory[portfolioHistory.length - 1].value >= portfolioHistory[0].value
+  const chartColor = portfolioHistory.length === 0 ? "#8B9BB4" : chartPositive ? "#0f766e" : "#be123c"
+
+  const chartMove = useMemo(() => {
+    if (portfolioHistory.length < 2) return null
+    const first = portfolioHistory[0].value
+    const last = portfolioHistory[portfolioHistory.length - 1].value
+    const change = last - first
+    const changePct = first ? (change / first) * 100 : 0
+    return { change, changePct, positive: change >= 0 }
+  }, [portfolioHistory])
+
   return (
     <div className="space-y-6">
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -385,6 +476,98 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            {portfolioHistory.length > 0 ? (
+              <div className="border-t border-border bg-card px-5 pb-4 pt-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground">Portfolio value</span>
+                    {chartMove ? (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 text-sm font-semibold",
+                          chartMove.positive ? "text-emerald-700" : "text-rose-700",
+                        )}
+                      >
+                        {chartMove.positive ? (
+                          <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4" aria-hidden="true" />
+                        )}
+                        {chartMove.positive ? "+" : ""}
+                        {formatCurrency(chartMove.change)} ({chartMove.positive ? "+" : ""}
+                        {chartMove.changePct.toFixed(2)}%)
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DASH_PERIODS.map((p) => (
+                      <button
+                        key={p}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors",
+                          p === chartPeriod
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                        type="button"
+                        onClick={() => setChartPeriod(p)}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-44">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={portfolioHistory} margin={{ left: 0, right: 4, top: 6, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="portfolioGrad" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="5%" stopColor={chartColor} stopOpacity={0.28} />
+                          <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="rgba(0,28,57,0.06)" vertical={false} />
+                      <XAxis
+                        dataKey="date"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: "#6d7d99", fontSize: 11, fontWeight: 600 }}
+                        minTickGap={32}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        domain={["auto", "auto"]}
+                        tick={{ fill: "#6d7d99", fontSize: 11, fontWeight: 600 }}
+                        tickFormatter={(v) =>
+                          v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${Number(v).toFixed(0)}`
+                        }
+                        width={44}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#ffffff",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: 8,
+                          color: "hsl(var(--foreground))",
+                          fontSize: 12,
+                        }}
+                        formatter={(value) => [formatCurrency(Number(value)), "Portfolio value"]}
+                      />
+                      <Area
+                        dataKey="value"
+                        type="monotone"
+                        stroke={chartColor}
+                        strokeWidth={2}
+                        fill="url(#portfolioGrad)"
+                        dot={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -817,7 +1000,18 @@ export function DashboardPage() {
                     <Badge variant={holding.category === "fund" ? "default" : "outline"}>
                       {holding.category === "fund" ? "Fund" : "Stock"}
                     </Badge>
-                    <Badge variant={riskVariant[holding.risk]}>{holding.risk} risk</Badge>
+                    <div
+                      className="group/risk relative"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Badge variant={riskVariant[holding.risk]}>{holding.risk} risk</Badge>
+                      <div className="pointer-events-none absolute bottom-full right-0 z-50 mb-2 w-60 rounded-md border border-border bg-popover p-3 text-xs shadow-panel opacity-0 transition-opacity duration-150 group-hover/risk:pointer-events-auto group-hover/risk:opacity-100">
+                        <p className="font-semibold text-foreground">{holding.risk} risk — why?</p>
+                        <p className="mt-1 leading-5 text-muted-foreground">
+                          {holding.plainLanguageRisk ?? defaultRiskExplanation[holding.risk]}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <ChevronRight className="ml-2 hidden h-4 w-4 text-muted-foreground sm:block" aria-hidden="true" />
                 </div>

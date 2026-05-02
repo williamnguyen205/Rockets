@@ -161,9 +161,9 @@ function getAllocation(holdings: Holding[], cashBalance: number): AllocationItem
   // Nothing invested yet: show 100% cash so charts match "all dry powder / uninvested" reality.
   if (total <= 0) {
     return [
-      { name: "Stocks", value: 0, color: "#34a85a" },
-      { name: "Mutual Funds", value: 0, color: "#4682b4" },
-      { name: "Cash", value: 100, color: "#6495ed" },
+      { name: "Stocks", value: 0, color: "#001C39" },
+      { name: "Mutual Funds", value: 0, color: "#B5985A" },
+      { name: "Cash", value: 100, color: "#8B9BB4" },
     ]
   }
 
@@ -172,9 +172,9 @@ function getAllocation(holdings: Holding[], cashBalance: number): AllocationItem
   const cashPct = parseFloat(Math.max(0, 100 - stocksPct - fundsPct).toFixed(1))
 
   return [
-    { name: "Stocks", value: stocksPct, color: "#34a85a" },
-    { name: "Mutual Funds", value: fundsPct, color: "#4682b4" },
-    { name: "Cash", value: cashPct, color: "#6495ed" },
+    { name: "Stocks", value: stocksPct, color: "#001C39" },
+    { name: "Mutual Funds", value: fundsPct, color: "#B5985A" },
+    { name: "Cash", value: cashPct, color: "#8B9BB4" },
   ]
 }
 

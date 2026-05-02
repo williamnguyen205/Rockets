@@ -5,10 +5,10 @@ from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter(tags=["stocks"])
 
-HistoryPeriod = Literal["1d", "5d", "1mo", "3mo", "6mo", "1y"]
-HistoryInterval = Literal["1d", "1h"]
-VALID_PERIODS: set[str] = {"1d", "5d", "1mo", "3mo", "6mo", "1y"}
-VALID_INTERVALS: set[str] = {"1d", "1h"}
+HistoryPeriod = Literal["1d", "5d", "1mo", "3mo", "6mo", "1y", "max"]
+HistoryInterval = Literal["1d", "1h", "1wk"]
+VALID_PERIODS: set[str] = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "max"}
+VALID_INTERVALS: set[str] = {"1d", "1h", "1wk"}
 
 
 def _round_number(value: object, decimals: int = 2) -> float | int | None:
@@ -124,7 +124,7 @@ def get_stock_history(
             status_code=422,
             detail=f"Invalid interval '{interval}'. Valid values are: {', '.join(sorted(VALID_INTERVALS))}.",
         )
-    if interval == "1h" and period not in {"1d", "5d"}:
+    if interval == "1h" and period not in {"1d", "5d", "max"}:
         raise HTTPException(
             status_code=422,
             detail="Hourly history is only available for 1d and 5d periods.",
@@ -136,6 +136,8 @@ def get_stock_history(
     history_interval = interval
     if period == "1d" and interval == "1d":
         history_period = "5d"
+    if period == "max":
+        history_interval = "1wk"
 
     try:
         history = stock.history(period=history_period, interval=history_interval)

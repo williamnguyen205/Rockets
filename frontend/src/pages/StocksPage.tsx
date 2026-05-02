@@ -53,7 +53,11 @@ const beginnerFunds = [
     plainLanguageRisk: "Often steadier than stocks, but bond prices can still fall when rates change.",
   },
 ]
-const periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y"]
+const periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "all"]
+
+function apiPeriod(p: string) {
+  return p === "all" ? "max" : p
+}
 
 function formatCompact(value: number | null) {
   if (value === null) return "N/A"
@@ -116,7 +120,7 @@ export function StocksPage() {
       try {
         const [quoteData, historyData] = await Promise.all([
           getStockQuote(ticker),
-          getStockHistory(ticker, period, period === "1d" ? "1h" : "1d"),
+          getStockHistory(ticker, apiPeriod(period), period === "1d" ? "1h" : "1d"),
         ])
 
         if (!cancelled) {
@@ -550,7 +554,7 @@ export function StocksPage() {
 
               {periodMove ? (
                 <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">{period} movement</span>
+                  <span className="text-muted-foreground">{period === "all" ? "all-time" : period} movement</span>
                   <span
                     className={cn(
                       "inline-flex items-center gap-1 font-semibold",

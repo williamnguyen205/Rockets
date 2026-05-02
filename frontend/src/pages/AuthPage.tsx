@@ -2,12 +2,12 @@ import { useState, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight, CheckCircle2, LockKeyhole, Mail, ShieldCheck, UserPlus, WalletCards } from "lucide-react"
 import { ClarityLogo } from "@/components/ClarityLogo"
+import { HeroAnimation } from "@/components/HeroAnimation"
 import { Button } from "@/components/ui/button"
 import { resetGettingStartedGuide } from "@/lib/gettingStartedGuide"
 import { startSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
 import { usePortfolioStore } from "@/store/portfolio"
-import heroImage from "@/assets/hero.png"
 
 type AuthMode = "create" | "login"
 
@@ -261,31 +261,7 @@ export function AuthPage() {
         </section>
 
         <section className="overflow-hidden rounded-lg border border-border bg-card shadow-lift">
-          <div className="grid gap-px bg-border sm:grid-cols-3">
-            {[
-              ["Health", "84"],
-              ["Allocation drift", "6pp"],
-              ["Cash ready", "$2.5k"],
-            ].map(([label, value]) => (
-              <div key={label} className="bg-card p-4">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
-                <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
-              </div>
-            ))}
-          </div>
-          <div className="relative aspect-[1.35] bg-muted">
-            <img
-              alt="Clarity investing dashboard preview"
-              className="h-full w-full object-cover"
-              src={heroImage}
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary/80 to-transparent p-5 text-primary-foreground">
-              <p className="text-sm font-semibold">Portfolio decisions, translated.</p>
-              <p className="mt-1 max-w-md text-sm text-primary-foreground/80">
-                See what changed, why it matters, and what a reasonable next move could look like.
-              </p>
-            </div>
-          </div>
+          <HeroAnimation />
         </section>
       </main>
     </div>

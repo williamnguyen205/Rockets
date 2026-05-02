@@ -46,9 +46,9 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        glow: "0 0 0 3px hsl(var(--ring) / 0.16)",
-        panel: "0 14px 32px hsl(222 47% 11% / 0.08)",
-        lift: "0 18px 50px hsl(222 47% 11% / 0.12)",
+        glow: "0 0 0 3px hsl(var(--ring) / 0.18)",
+        panel: "0 14px 32px hsl(211 100% 11% / 0.08)",
+        lift: "0 18px 50px hsl(211 100% 11% / 0.13)",
       },
     },
   },
