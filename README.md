@@ -1,39 +1,40 @@
 # Clarity
 
-Clarity is a polished fintech app shell for beginner investors. The project is split into separate frontend and backend workspaces so the UI and API can evolve independently.
+Clarity is a practice investing workspace for beginner investors: a React dashboard with portfolio allocation guidance, live stock lookup, scenario modeling, and a Learn tab backed by local AI. The repo splits **frontend** and **backend** so the UI and API can evolve independently.
 
-## Project Structure
+## Project structure
 
 ```txt
 clarity/
-  frontend/            Vite + React + TypeScript app
+  frontend/                 Vite + React + TypeScript
     src/
-      components/      App shell and shadcn-style UI primitives
-      pages/           Dashboard, Stocks, Scenarios, Learn, Account via avatar
-      store/           Zustand portfolio mock data
-      lib/             Shared frontend utilities
-  backend/             FastAPI backend
-    main.py            FastAPI app, CORS, router registration
-    routes/ai.py       Ollama-powered Learn tab tutor endpoint
-    routes/stocks.py   Stock quote, history, and batch endpoints
-    requirements.txt   Python dependencies
-  package.json         Root scripts for frontend/backend tasks
+      components/           App shell (sidebar + mobile nav), tutor, UI primitives, gates
+      pages/                Auth, onboarding wizard, dashboard, stocks, scenarios, learn, account
+      store/                Zustand portfolio state (persisted)
+      lib/                  API client, session helpers, utilities
+  backend/                  FastAPI
+    main.py                 App, CORS, routers
+    routes/ai.py            Learn tutor + scenario explanation (Ollama)
+    routes/stocks.py        Quotes, history, batch
+    requirements.txt
+  package.json              Root scripts (delegate to frontend/backend)
 ```
 
-## Tech Stack
+## Tech stack
 
-- Vite
-- React
-- TypeScript
-- Tailwind CSS
-- React Router v6
-- Zustand
-- Recharts
-- FastAPI
-- Ollama
-- yfinance
+- Vite, React, TypeScript, Tailwind CSS, React Router v6, Zustand (persist), Recharts  
+- FastAPI, yfinance, Ollama (optional, for `/ai/*`)
 
-## Frontend Setup
+## App behavior (frontend)
+
+- **Auth:** `/`, `/login`, `/auth`, and `/create` render the same auth screen. Session is a lightweight flag in `localStorage` (`clarity-session`), managed in `frontend/src/lib/session.ts`.
+- **Onboarding:** After sign-in, `OnboardingGate` sends users to `/onboarding` until they finish the guided setup. Completing onboarding sets `onboarded` in the portfolio store and persists it.
+- **Main app:** Routes under `AppShell` include `/dashboard`, `/stocks`, `/scenarios`, `/learn`, and `/account`. The shell uses a **sidebar** on large screens and a **mobile** header with slide-down navigation.
+- **Portfolio data:** Mock/practice holdings and profile fields live in `frontend/src/store/portfolio.ts`, persisted under **`clarity-portfolio-v2`**. Allocation percentages for the dashboard are derived from holdings and cash (`getAllocation`), not from stale store snapshots.
+- **Clarity tutor:** Floating help widget (inside `AppShell`) calls the backend `/ai/learn` endpoint; Learn lessons can pass module/lesson context via `useClarityTutor` from `ClarityTutorContext.tsx`.
+- **Theming:** Light/dark follows `localStorage` key `clarity-theme` or system preference (`frontend/src/index.css`).
+
+## Frontend setup
 
 ```bash
 cd frontend
@@ -41,7 +42,7 @@ npm install
 npm run dev
 ```
 
-## Backend Setup
+## Backend setup
 
 ```bash
 cd backend
@@ -51,68 +52,59 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-The backend runs on `http://127.0.0.1:8000`.
+The API defaults to `http://127.0.0.1:8000`.
 
-For AI tutor responses, install and start Ollama:
+For AI features, install and run Ollama:
 
 ```bash
 ollama pull phi4:14b
 ollama serve
 ```
 
-To use the frontend stock lookup and AI tutor pages, run the backend and frontend at the same time:
+Run both for full functionality:
 
 ```bash
 # terminal 1
-cd backend
-source .venv/bin/activate
-uvicorn main:app --reload
+cd backend && source .venv/bin/activate && uvicorn main:app --reload
 
 # terminal 2
-cd frontend
-npm run dev
+cd frontend && npm run dev
 ```
 
-## Root Scripts
+## Root scripts
 
-Run these from the root `clarity/` directory:
+From the repo root:
 
 ```bash
-npm run dev            # start the frontend Vite dev server
-npm run dev:frontend   # start the frontend Vite dev server
-npm run dev:backend    # start the FastAPI backend from backend/.venv
-npm run build          # build the frontend
-npm run lint           # lint the frontend
+npm run dev            # frontend dev server
+npm run dev:frontend   # same
+npm run dev:backend    # FastAPI with backend/.venv
+npm run build          # production build (frontend)
+npm run lint           # ESLint (frontend)
 ```
 
-## Backend Endpoints
+## Backend endpoints
 
 ```txt
-GET /health
+GET  /health
 POST /ai/learn
 POST /ai/scenario-explain
-GET /stock/{ticker}
-GET /stock/{ticker}/history?period=1mo
-GET /stocks/batch?tickers=AAPL,GOOGL,TSLA
+GET  /stock/{ticker}
+GET  /stock/{ticker}/history?period=1mo
+GET  /stocks/batch?tickers=AAPL,GOOGL,TSLA
 ```
 
-Example:
+Examples:
 
 ```bash
 curl http://127.0.0.1:8000/stock/AAPL
 curl -X POST http://127.0.0.1:8000/ai/learn \
   -H "Content-Type: application/json" \
   -d '{"question":"What is diversification?"}'
-curl -X POST http://127.0.0.1:8000/ai/scenario-explain \
-  -H "Content-Type: application/json" \
-  -d '{"scenarioId":"market_drop_20","scenarioTitle":"What if the market drops about 20%?","portfolioSummary":{"totalValueUsd":10000,"cashPct":10,"stocksPct":60,"fundsPct":30,"profile":"Balanced","timeline":"5-10 years","goal":"Wealth Growth","monthlyContribution":100,"topHoldings":[]},"suggestedTrade":"• Stay diversified\n\nGeneral guidance."}'
 ```
 
-## Development Notes
+## Development notes
 
-- Keep frontend-only code inside `frontend/src`.
-- Keep server/API code inside `backend`.
-- Shared types can eventually live in a `shared/` folder if both frontend and backend need them.
-- Replace frontend mock data in `frontend/src/store/portfolio.ts` with API calls when you connect the app to the backend.
-- The stock lookup page calls `http://127.0.0.1:8000` by default. Override with `VITE_API_BASE_URL` if needed.
-- The Learn tab AI tutor uses local Ollama by default: `OLLAMA_BASE_URL=http://127.0.0.1:11434`, `OLLAMA_MODEL=phi4:14b`.
+- Keep browser-only code in `frontend/src`; keep HTTP/API code in `backend/`.
+- Override the API base URL with `VITE_API_BASE_URL` (e.g. in `frontend/.env.local`).
+- Ollama defaults: `OLLAMA_BASE_URL=http://127.0.0.1:11434`, `OLLAMA_MODEL=phi4:14b` (see backend code for env usage).

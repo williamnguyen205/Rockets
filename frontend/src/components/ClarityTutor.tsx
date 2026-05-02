@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -10,8 +8,13 @@ import {
 } from "react"
 import { MessageCircle, X } from "lucide-react"
 import { ClarityChatBlock } from "@/components/ClarityChatBlock"
+import {
+  ClarityTutorContext,
+  useClarityTutor,
+  type LearnContextPayload,
+} from "@/components/ClarityTutorContext"
 import { Button } from "@/components/ui/button"
-import { askLearnQuestion, type LearnAnswer, type LearnQuestionContext } from "@/lib/api"
+import { askLearnQuestion, type LearnAnswer } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const CHATBOT_INTRO_STORAGE_KEY = "clarity:chatbot-intro"
@@ -23,30 +26,6 @@ function readChatbotIntroDismissed() {
 
 const GENERAL_MODULE = "Clarity app"
 const GENERAL_LESSON = "General help"
-
-type LearnContextPayload = Required<Pick<LearnQuestionContext, "moduleTitle" | "lessonTitle">>
-
-type ClarityTutorContextValue = {
-  learnContext: LearnContextPayload | null
-  setLearnContext: (ctx: LearnContextPayload) => void
-  clearLearnContext: () => void
-  question: string
-  setQuestion: (q: string) => void
-  answer: LearnAnswer | null
-  error: string
-  loading: boolean
-  submitAsk: (event: FormEvent<HTMLFormElement>) => Promise<void>
-}
-
-const ClarityTutorContext = createContext<ClarityTutorContextValue | null>(null)
-
-export function useClarityTutor() {
-  const ctx = useContext(ClarityTutorContext)
-  if (!ctx) {
-    throw new Error("useClarityTutor must be used within ClarityTutorProvider")
-  }
-  return ctx
-}
 
 export function ClarityTutorProvider({ children }: { children: ReactNode }) {
   const [learnContext, setLearnContextState] = useState<LearnContextPayload | null>(null)
