@@ -44,9 +44,13 @@ export function AppShell() {
           </div>
 
           <div className="flex justify-end">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-white shadow-glow">
+            <NavLink
+              aria-label="Account settings"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-muted text-xs font-semibold text-white shadow-glow transition-colors hover:border-primary hover:text-primary"
+              to="/account"
+            >
               CL
-            </div>
+            </NavLink>
           </div>
         </nav>
       </header>
