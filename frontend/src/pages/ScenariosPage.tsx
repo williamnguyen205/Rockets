@@ -37,15 +37,25 @@ const timelineYears: Record<InvestmentTimeline, number> = {
   "10+ years": 5,
 }
 
-function projectValue(startingValue: number, monthlyContribution: number, annualReturn: number, years: number) {
+function projectYearlyValues(
+  startingValue: number,
+  monthlyContribution: number,
+  annualReturn: number,
+  years: number,
+) {
   let value = startingValue
   const monthlyReturn = annualReturn / 12
+  const values = [Math.round(value)]
 
-  for (let month = 0; month < years * 12; month += 1) {
-    value = value * (1 + monthlyReturn) + monthlyContribution
+  for (let year = 0; year < years; year += 1) {
+    for (let month = 0; month < 12; month += 1) {
+      value = value * (1 + monthlyReturn) + monthlyContribution
+    }
+
+    values.push(Math.round(value))
   }
 
-  return Math.round(value)
+  return values
 }
 
 function formatCompactCurrency(value: number) {
@@ -71,19 +81,28 @@ export function ScenariosPage() {
   const years = timelineYears[timeline]
   const baselineReturn = annualReturnByProfile[profile]
   const optimizedReturn = baselineReturn + 0.012
+  const annualContribution = monthlyContribution * 12
   const projection = useMemo(
-    () =>
-      Array.from({ length: years + 1 }, (_, index) => ({
+    () => {
+      const baselineValues = projectYearlyValues(
+        startingValue,
+        monthlyContribution,
+        baselineReturn,
+        years,
+      )
+      const optimizedValues = projectYearlyValues(
+        startingValue,
+        monthlyContribution,
+        optimizedReturn,
+        years,
+      )
+
+      return baselineValues.map((baseline, index) => ({
         year: String(2026 + index),
-        baseline:
-          index === 0
-            ? Math.round(startingValue)
-            : projectValue(startingValue, 0, baselineReturn, index),
-        optimized:
-          index === 0
-            ? Math.round(startingValue)
-            : projectValue(startingValue, monthlyContribution, optimizedReturn, index),
-      })),
+        baseline,
+        optimized: optimizedValues[index],
+      }))
+    },
     [baselineReturn, monthlyContribution, optimizedReturn, startingValue, years],
   )
   const finalBaseline = projection[projection.length - 1].baseline
@@ -94,11 +113,11 @@ export function ScenariosPage() {
         monthlyContribution > 0
           ? `Add ${formatCurrency(monthlyContribution)} monthly`
           : "No monthly contribution",
-      value: `+${formatCompactCurrency(
-        projectValue(startingValue, monthlyContribution, optimizedReturn, years) -
-          projectValue(startingValue, 0, optimizedReturn, years),
-      )}`,
-      copy: "Uses the contribution saved on your profile",
+      value: `+${formatCompactCurrency(finalOptimized - projectYearlyValues(startingValue, 0, optimizedReturn, years)[years])}`,
+      copy:
+        monthlyContribution > 0
+          ? `${formatCurrency(annualContribution)} added per year from your profile setting`
+          : "No profile contribution is added to the projection",
     },
     {
       title: `${profile} profile`,
@@ -168,6 +187,7 @@ export function ScenariosPage() {
                     borderRadius: 16,
                     color: "#080d21",
                   }}
+                  itemSorter={(item) => (item.dataKey === "optimized" ? -1 : 1)}
                   formatter={(value, name) => [
                     `$${Number(value).toLocaleString()}`,
                     name === "optimized" ? "Optimized path" : "Current path",

@@ -29,6 +29,8 @@ type AccountForm = {
   monthlyContribution: string
 }
 
+type SecurityPanel = "password" | "billing" | null
+
 const preferenceDefaults = {
   emailAlerts: true,
   weeklyDigest: true,
@@ -124,7 +126,16 @@ function Toggle({
 }
 
 export function AccountPage() {
-  const { profile, timeline, monthlyContribution, updateProfileSettings } = usePortfolioStore()
+  const {
+    profile,
+    timeline,
+    monthlyContribution,
+    healthScore,
+    allocation,
+    cashBalance,
+    holdings,
+    updateProfileSettings,
+  } = usePortfolioStore()
   const initialForm: AccountForm = {
     fullName: "Clarity User",
     email: "clarity@example.com",
@@ -137,6 +148,19 @@ export function AccountPage() {
   const [preferences, setPreferences] = useState(preferenceDefaults)
   const [darkMode, setDarkMode] = useState(getInitialTheme)
   const [saved, setSaved] = useState(false)
+  const [activeSecurityPanel, setActiveSecurityPanel] = useState<SecurityPanel>(null)
+  const [passwordFields, setPasswordFields] = useState({
+    current: "",
+    next: "",
+    confirm: "",
+  })
+  const [passwordStatus, setPasswordStatus] = useState("Last changed 28 days ago")
+  const [passwordMessage, setPasswordMessage] = useState("")
+  const [emailVerified, setEmailVerified] = useState(false)
+  const [billingPlan, setBillingPlan] = useState<"Free" | "Plus">("Free")
+  const [cardLast4, setCardLast4] = useState("")
+  const [cardInput, setCardInput] = useState("")
+  const [securityMessage, setSecurityMessage] = useState("")
 
   const hasChanges = useMemo(
     () => JSON.stringify(form) !== JSON.stringify(savedForm),
@@ -172,6 +196,90 @@ export function AccountPage() {
   function resetForm() {
     setForm(savedForm)
     setSaved(false)
+  }
+
+  function updatePasswordField(field: keyof typeof passwordFields, value: string) {
+    setPasswordFields((current) => ({ ...current, [field]: value }))
+    setPasswordMessage("")
+    setSecurityMessage("")
+  }
+
+  function savePasswordChange() {
+    if (!passwordFields.current || !passwordFields.next || !passwordFields.confirm) {
+      setPasswordMessage("Fill out all password fields.")
+      return
+    }
+
+    if (passwordFields.next.length < 8) {
+      setPasswordMessage("Use at least 8 characters for the new password.")
+      return
+    }
+
+    if (passwordFields.next !== passwordFields.confirm) {
+      setPasswordMessage("New password and confirmation do not match.")
+      return
+    }
+
+    setPasswordFields({ current: "", next: "", confirm: "" })
+    setPasswordStatus("Changed just now")
+    setPasswordMessage("")
+    setSecurityMessage("Password updated locally.")
+    setActiveSecurityPanel(null)
+  }
+
+  function verifyEmail() {
+    setEmailVerified(true)
+    setSecurityMessage(`Verification marked complete for ${form.email}.`)
+  }
+
+  function saveBillingDetails() {
+    const digits = cardInput.replace(/\D/g, "")
+
+    if (billingPlan === "Plus" && digits.length < 4) {
+      setSecurityMessage("Enter at least the last 4 card digits for Plus billing.")
+      return
+    }
+
+    setCardLast4(digits ? digits.slice(-4) : "")
+    setCardInput("")
+    setSecurityMessage("Billing settings saved locally.")
+    setActiveSecurityPanel(null)
+  }
+
+  function exportAccountData() {
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      account: {
+        fullName: form.fullName,
+        email: form.email,
+        emailVerified,
+        billingPlan,
+        cardLast4: cardLast4 || null,
+      },
+      profile: {
+        investorType: form.investorType,
+        timeline: form.timeline,
+        monthlyContribution: Number(form.monthlyContribution) || 0,
+        healthScore,
+      },
+      preferences,
+      portfolio: {
+        cashBalance,
+        allocation,
+        holdings,
+      },
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+
+    link.href = url
+    link.download = "clarity-account-export.json"
+    link.click()
+    URL.revokeObjectURL(url)
+    setSecurityMessage("Account and portfolio export downloaded.")
   }
 
   return (
@@ -318,33 +426,42 @@ export function AccountPage() {
               <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
               Security and billing
             </CardTitle>
-            <CardDescription>Common account actions you will likely connect to auth and billing later.</CardDescription>
+            <CardDescription>Manage local account security, billing preferences, and exports.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {[
               {
                 icon: Lock,
                 label: "Password",
-                description: "Last changed 28 days ago",
-                action: "Change",
+                description: passwordStatus,
+                action: activeSecurityPanel === "password" ? "Close" : "Change",
+                onClick: () =>
+                  setActiveSecurityPanel((current) => (current === "password" ? null : "password")),
               },
               {
                 icon: Mail,
                 label: "Login email",
-                description: form.email,
-                action: "Verify",
+                description: emailVerified ? `${form.email} verified` : form.email,
+                action: emailVerified ? "Verified" : "Verify",
+                onClick: verifyEmail,
               },
               {
                 icon: CreditCard,
                 label: "Billing",
-                description: "Free plan, no card on file",
-                action: "Manage",
+                description:
+                  billingPlan === "Free"
+                    ? "Free plan, no card required"
+                    : `Plus plan${cardLast4 ? `, card ending ${cardLast4}` : ", card needed"}`,
+                action: activeSecurityPanel === "billing" ? "Close" : "Manage",
+                onClick: () =>
+                  setActiveSecurityPanel((current) => (current === "billing" ? null : "billing")),
               },
               {
                 icon: SlidersHorizontal,
                 label: "Data export",
                 description: "Download account and portfolio data",
                 action: "Export",
+                onClick: exportAccountData,
               },
             ].map((item) => (
               <div
@@ -360,11 +477,90 @@ export function AccountPage() {
                     <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
                   </div>
                 </div>
-                <Button size="sm" type="button" variant="ghost">
+                <Button
+                  disabled={item.label === "Login email" && emailVerified}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                  onClick={item.onClick}
+                >
                   {item.action}
                 </Button>
               </div>
             ))}
+            {activeSecurityPanel === "password" ? (
+              <div className="grid gap-3 rounded-xl border border-border bg-muted/40 p-4 sm:grid-cols-3">
+                <Field label="Current password">
+                  <TextInput
+                    type="password"
+                    value={passwordFields.current}
+                    onChange={(event) => updatePasswordField("current", event.target.value)}
+                  />
+                </Field>
+                <Field label="New password">
+                  <TextInput
+                    type="password"
+                    value={passwordFields.next}
+                    onChange={(event) => updatePasswordField("next", event.target.value)}
+                  />
+                </Field>
+                <Field label="Confirm password">
+                  <TextInput
+                    type="password"
+                    value={passwordFields.confirm}
+                    onChange={(event) => updatePasswordField("confirm", event.target.value)}
+                  />
+                </Field>
+                <div className="flex flex-col gap-2 sm:col-span-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {passwordMessage || "Password changes are simulated locally for this prototype."}
+                  </p>
+                  <Button type="button" onClick={savePasswordChange}>
+                    Save password
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {activeSecurityPanel === "billing" ? (
+              <div className="grid gap-3 rounded-xl border border-border bg-muted/40 p-4 sm:grid-cols-2">
+                <Field label="Plan">
+                  <SelectInput
+                    value={billingPlan}
+                    onChange={(event) => setBillingPlan(event.target.value as "Free" | "Plus")}
+                  >
+                    <option>Free</option>
+                    <option>Plus</option>
+                  </SelectInput>
+                </Field>
+                <Field label="Card last 4">
+                  <TextInput
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder={cardLast4 || "Optional for Free"}
+                    value={cardInput}
+                    onChange={(event) => {
+                      setCardInput(event.target.value)
+                      setSecurityMessage("")
+                    }}
+                  />
+                </Field>
+                <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {billingPlan === "Free"
+                      ? "Free keeps all current dashboard, stocks, and learning features."
+                      : "Plus billing is simulated locally until payments are connected."}
+                  </p>
+                  <Button type="button" onClick={saveBillingDetails}>
+                    Save billing
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {securityMessage ? (
+              <p className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary">
+                {securityMessage}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 
