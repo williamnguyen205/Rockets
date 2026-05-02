@@ -674,11 +674,11 @@ export function StocksPage() {
                   <AreaChart data={history} margin={{ left: 0, right: 8, top: 10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="stockLookup" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="5%" stopColor="#0f766e" stopOpacity={0.32} />
-                        <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#2178C4" stopOpacity={0.28} />
+                        <stop offset="95%" stopColor="#2178C4" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid stroke="rgba(8,13,33,0.1)" vertical={false} />
+                    <CartesianGrid stroke="rgba(34,38,63,0.08)" vertical={false} />
                     <XAxis
                       axisLine={false}
                       dataKey="date"
@@ -708,7 +708,7 @@ export function StocksPage() {
                     <Area
                       dataKey="close"
                       fill="url(#stockLookup)"
-                      stroke="#0f766e"
+                      stroke="#2178C4"
                       strokeWidth={2}
                       type="monotone"
                     />

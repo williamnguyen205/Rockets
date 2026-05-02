@@ -47,8 +47,8 @@ export default {
       },
       boxShadow: {
         glow: "0 0 0 3px hsl(var(--ring) / 0.18)",
-        panel: "0 14px 32px hsl(211 100% 11% / 0.08)",
-        lift: "0 18px 50px hsl(211 100% 11% / 0.13)",
+        panel: "0 14px 32px hsl(232 30% 19% / 0.09)",
+        lift: "0 18px 50px hsl(232 30% 19% / 0.14)",
       },
     },
   },

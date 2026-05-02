@@ -46,7 +46,7 @@ function PortfolioContent() {
 
 export function HeroAnimation() {
   return (
-    <div className="relative aspect-[1.35] overflow-hidden bg-gradient-to-br from-gray-50 to-amber-50/20 dark:from-slate-900 dark:to-slate-900">
+    <div className="relative aspect-[1.35] overflow-hidden bg-gradient-to-br from-white to-blue-50/40 dark:from-[#0d1020] dark:to-[#0d1020]">
       <style>{`
         @keyframes hcGlass {
           0%, 10%  { left: -14%; }
@@ -73,7 +73,7 @@ export function HeroAnimation() {
           top: 50%;
           transform: translateY(-50%);
           animation: hcGlass 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-          filter: drop-shadow(0 4px 14px rgba(0,28,57,0.22));
+          filter: drop-shadow(0 4px 14px rgba(33,120,196,0.28));
           pointer-events: none;
         }
         .hc-reveal          { animation: hcReveal 12s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
@@ -114,17 +114,17 @@ export function HeroAnimation() {
       </div>
 
       {/* Phase 3 — portfolio data shown clearly */}
-      <div className="hc-clear-portfolio absolute inset-0 bg-gradient-to-br from-gray-50 to-amber-50/20 dark:from-slate-900 dark:to-slate-900">
+      <div className="hc-clear-portfolio absolute inset-0 bg-gradient-to-br from-white to-blue-50/40 dark:from-[#0d1020] dark:to-[#0d1020]">
         <PortfolioContent />
       </div>
 
       {/* Magnifying glass overlay */}
       <div className="hc-glass">
         <svg width="90" height="90" viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="35" cy="35" r="28" fill="rgba(0,28,57,0.07)" stroke="rgba(0,28,57,0.75)" strokeWidth="3.5" />
-          <ellipse cx="25" cy="24" rx="7.5" ry="4.5" fill="white" fillOpacity="0.28" transform="rotate(-32 25 24)" />
-          <line x1="57" y1="57" x2="84" y2="84" stroke="rgba(0,28,57,0.75)" strokeWidth="5.5" strokeLinecap="round" />
-          <circle cx="84" cy="84" r="3.5" fill="rgba(181,152,90,0.85)" />
+          <circle cx="35" cy="35" r="28" fill="rgba(33,120,196,0.08)" stroke="rgba(33,120,196,0.80)" strokeWidth="3.5" />
+          <ellipse cx="25" cy="24" rx="7.5" ry="4.5" fill="white" fillOpacity="0.30" transform="rotate(-32 25 24)" />
+          <line x1="57" y1="57" x2="84" y2="84" stroke="rgba(34,38,63,0.85)" strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="84" cy="84" r="3.5" fill="rgba(33,120,196,0.70)" />
         </svg>
       </div>
     </div>

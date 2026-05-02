@@ -189,8 +189,8 @@ function HealthRing({ score }: { score: number }) {
         />
         <defs>
           <linearGradient id="healthGradient" x1="30" x2="190" y1="30" y2="190">
-            <stop stopColor="#0f766e" />
-            <stop offset="1" stopColor="#1d4ed8" />
+            <stop stopColor="#2178C4" />
+            <stop offset="1" stopColor="#22263F" />
           </linearGradient>
         </defs>
       </svg>
@@ -443,7 +443,7 @@ export function DashboardPage() {
   const chartPositive =
     portfolioHistory.length > 1 &&
     portfolioHistory[portfolioHistory.length - 1].value >= portfolioHistory[0].value
-  const chartColor = portfolioHistory.length === 0 ? "#8B9BB4" : chartPositive ? "#0f766e" : "#be123c"
+  const chartColor = portfolioHistory.length === 0 ? "#8B9BB4" : chartPositive ? "#2178C4" : "#be123c"
 
   const chartMove = useMemo(() => {
     if (portfolioHistory.length < 2) return null
@@ -543,7 +543,7 @@ export function DashboardPage() {
                           <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid stroke="rgba(0,28,57,0.06)" vertical={false} />
+                      <CartesianGrid stroke="rgba(34,38,63,0.06)" vertical={false} />
                       <XAxis
                         dataKey="date"
                         axisLine={false}
