@@ -7,7 +7,16 @@ import {
   Tooltip,
 } from "recharts"
 import { Link } from "react-router-dom"
-import { ArrowDownRight, ArrowUpRight, ChevronDown, ShieldCheck, Sparkles } from "lucide-react"
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
+  PieChart as PieChartIcon,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -153,7 +162,7 @@ function HealthRing({ score }: { score: number }) {
           cy="110"
           fill="none"
           r={radius}
-          stroke="rgba(8,13,33,0.1)"
+          stroke="hsl(var(--muted))"
           strokeWidth="12"
         />
         <circle
@@ -169,8 +178,8 @@ function HealthRing({ score }: { score: number }) {
         />
         <defs>
           <linearGradient id="healthGradient" x1="30" x2="190" y1="30" y2="190">
-            <stop stopColor="#34a85a" />
-            <stop offset="1" stopColor="#6495ed" />
+            <stop stopColor="#0f766e" />
+            <stop offset="1" stopColor="#1d4ed8" />
           </linearGradient>
         </defs>
       </svg>
@@ -318,122 +327,77 @@ export function DashboardPage() {
   )
 
   const portfolioTotal = useMemo(() => getPortfolioValue(holdings, cashBalance), [holdings, cashBalance])
+  const investedValue = portfolioTotal - cashBalance
+  const weightedDayMove = useMemo(
+    () =>
+      holdings.reduce((total, holding) => {
+        const value = getHoldingValue(holding)
+        return total + value * (holding.change / 100)
+      }, 0),
+    [holdings],
+  )
+  const weightedDayMovePct = investedValue ? (weightedDayMove / investedValue) * 100 : 0
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-3 text-center">
-        <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-glow">
-          <Sparkles className="h-5 w-5" aria-hidden="true" />
-        </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Financial clarity, instantly.</h1>
-        <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground">
-          A calm command center for understanding your risk, allocation, and holdings without spreadsheet anxiety.
-        </p>
-      </section>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Your allocation</CardTitle>
-          <CardDescription>
-            Percentages are computed from your positions and cash ({formatCurrency(portfolioTotal)} total)—same numbers
-            drive the guidance below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actual mix</p>
-            <div
-              className="flex h-11 w-full overflow-hidden rounded-full border-2 border-border/90 bg-muted shadow-inner"
-              role="img"
-              aria-label={`Allocation: ${allocation.map((s) => `${s.name} ${s.value}%`).join(", ")}`}
-            >
-              {allocation.map((seg) =>
-                seg.value > 0 ? (
-                  <div
-                    key={seg.name}
-                    className="flex min-w-0 items-center justify-center px-1 text-[10px] font-black leading-tight text-white drop-shadow-sm sm:text-xs"
-                    style={{
-                      width: `${seg.value}%`,
-                      backgroundColor: seg.color,
-                    }}
-                    title={`${seg.name}: ${seg.value}%`}
-                  >
-                    {seg.value >= 6 ? `${seg.value}%` : ""}
+    <div className="space-y-6">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="border-b border-border bg-muted/35 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">Portfolio dashboard</p>
+                  <h1 className="mt-2 text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
+                    {formatCurrency(portfolioTotal)}
+                  </h1>
+                </div>
+                <Badge variant={weightedDayMove >= 0 ? "low" : "high"}>
+                  {weightedDayMove >= 0 ? "+" : ""}
+                  {formatCurrency(weightedDayMove)} today
+                </Badge>
+              </div>
+            </div>
+            <div className="grid gap-px bg-border sm:grid-cols-3">
+              {[
+                { label: "Invested", value: formatCurrency(investedValue), icon: BarChart3 },
+                { label: "Cash", value: formatCurrency(cashBalance), icon: Wallet },
+                {
+                  label: "Day move",
+                  value: `${weightedDayMovePct >= 0 ? "+" : ""}${weightedDayMovePct.toFixed(2)}%`,
+                  icon: ArrowUpRight,
+                },
+              ].map((metric) => (
+                <div key={metric.label} className="bg-card p-5">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+                    <metric.icon className="h-4 w-4 text-accent" aria-hidden="true" />
+                    {metric.label}
                   </div>
-                ) : null,
-              )}
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-              {allocation.map((item) => (
-                <span key={item.name} className="inline-flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="font-medium text-foreground">{item.name}</span>
-                  <span>{item.value}%</span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid items-center gap-5 sm:grid-cols-[1fr_0.9fr]">
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Tooltip content={<AllocationTooltip />} cursor={false} />
-                  <Pie
-                    data={pieSlices.length ? pieSlices : [{ name: "Cash", value: 100, color: "#6495ed" }]}
-                    dataKey="value"
-                    innerRadius={66}
-                    outerRadius={92}
-                    paddingAngle={pieSlices.length > 1 ? 4 : 0}
-                    stroke="rgba(10,13,20,0.92)"
-                    strokeWidth={5}
-                  >
-                    {(pieSlices.length ? pieSlices : [{ name: "Cash", value: 100, color: "#6495ed" }]).map(
-                      (entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ),
-                    )}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="space-y-3">
-              {allocation.map((item) => (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/55 px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="text-sm font-medium text-foreground">{item.name}</span>
-                  </div>
-                  <span className="text-sm font-semibold text-muted-foreground">{item.value}%</span>
+                  <p className="mt-3 text-2xl font-semibold tabular-nums text-foreground">{metric.value}</p>
                 </div>
               ))}
             </div>
-          </div>
-          <div className="rounded-lg border border-border/70 bg-muted/55 px-4 py-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">Cash available</span>
-              <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card
-        className={cn(
-          "relative overflow-visible",
-          openMetric !== null && "z-40 shadow-md ring-1 ring-border/40",
-        )}
-      >
-        <CardContent className="overflow-visible p-8">
-          <HealthRing score={healthScore} />
-          <div className="mt-7 grid grid-cols-2 gap-3 overflow-visible sm:grid-cols-4">
+        <Card
+          className={cn(
+            "relative overflow-visible",
+            openMetric !== null && "z-40 shadow-md ring-1 ring-border/40",
+          )}
+        >
+          <CardContent className="overflow-visible p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Plan fit</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{profile}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {TIMELINE_CHOICES.find((t) => t.value === timeline)?.label ?? timeline} · {goalChipLabel(goal)}
+                </p>
+              </div>
+              <Badge variant="outline">{formatCurrency(monthlyContribution)}/mo</Badge>
+            </div>
+            <HealthRing score={healthScore} />
+            <div className="mt-4 grid grid-cols-2 gap-3 overflow-visible sm:grid-cols-4">
             <PlanMetricDropdown
               open={openMetric === "profile"}
               triggerLabel="Investor profile"
@@ -581,49 +545,149 @@ export function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Current vs target</CardTitle>
-          <CardDescription>
-            Targets match your <span className="font-medium text-foreground">{profile}</span> posture. Bars show
-            today&apos;s mix; the vertical line is your target for that bucket.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {vsTargetRows.map((row) => (
-            <div key={row.label} className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
-                  <span className="text-sm font-medium text-foreground">{row.label}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">{row.current}%</span> now ·{" "}
-                    <span className="font-semibold text-foreground">{row.targetPct}%</span> target
-                  </span>
-                  <DeltaChip driftPp={row.driftPp} />
-                </div>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Your allocation</CardTitle>
+              <CardDescription>
+                Percentages are computed from your positions and cash ({formatCurrency(portfolioTotal)} total)—same
+                numbers drive the guidance below.
+              </CardDescription>
+            </div>
+            <PieChartIcon className="h-5 w-5 text-accent" aria-hidden="true" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actual mix</p>
+              <div
+                className="flex h-11 w-full overflow-hidden rounded-full border-2 border-border/90 bg-muted shadow-inner"
+                role="img"
+                aria-label={`Allocation: ${allocation.map((s) => `${s.name} ${s.value}%`).join(", ")}`}
+              >
+                {allocation.map((seg) =>
+                  seg.value > 0 ? (
+                    <div
+                      key={seg.name}
+                      className="flex min-w-0 items-center justify-center px-1 text-[10px] font-black leading-tight text-white drop-shadow-sm sm:text-xs"
+                      style={{
+                        width: `${seg.value}%`,
+                        backgroundColor: seg.color,
+                      }}
+                      title={`${seg.name}: ${seg.value}%`}
+                    >
+                      {seg.value >= 6 ? `${seg.value}%` : ""}
+                    </div>
+                  ) : null,
+                )}
               </div>
-              <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="absolute inset-y-0 left-0 rounded-full opacity-90"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, row.current))}%`,
-                    backgroundColor: row.color,
-                  }}
-                />
-                <div
-                  className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-foreground shadow-sm"
-                  style={{ left: `${Math.min(100, Math.max(0, row.targetPct))}%`, transform: "translateX(-50%)" }}
-                  aria-hidden
-                />
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {allocation.map((item) => (
+                  <span key={item.name} className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="font-medium text-foreground">{item.name}</span>
+                    <span>{item.value}%</span>
+                  </span>
+                ))}
               </div>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+
+            <div className="grid items-center gap-5 sm:grid-cols-[1fr_0.9fr]">
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Tooltip content={<AllocationTooltip />} cursor={false} />
+                    <Pie
+                      data={pieSlices.length ? pieSlices : [{ name: "Cash", value: 100, color: "#6495ed" }]}
+                      dataKey="value"
+                      innerRadius={66}
+                      outerRadius={92}
+                      paddingAngle={pieSlices.length > 1 ? 4 : 0}
+                      stroke="rgba(10,13,20,0.92)"
+                      strokeWidth={5}
+                    >
+                      {(pieSlices.length ? pieSlices : [{ name: "Cash", value: 100, color: "#6495ed" }]).map(
+                        (entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ),
+                      )}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="space-y-3">
+                {allocation.map((item) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-between rounded-md border border-border bg-muted/45 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-sm font-medium text-foreground">{item.name}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-muted-foreground">{item.value}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-md border border-border bg-muted/45 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-foreground">Cash available</span>
+                <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Current vs target</CardTitle>
+            <CardDescription>
+              Targets match your <span className="font-medium text-foreground">{profile}</span> posture. Bars show
+              today&apos;s mix; the vertical line is your target for that bucket.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {vsTargetRows.map((row) => (
+              <div key={row.label} className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+                    <span className="text-sm font-medium text-foreground">{row.label}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground">{row.current}%</span> now ·{" "}
+                      <span className="font-semibold text-foreground">{row.targetPct}%</span> target
+                    </span>
+                    <DeltaChip driftPp={row.driftPp} />
+                  </div>
+                </div>
+                <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full opacity-90"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, row.current))}%`,
+                      backgroundColor: row.color,
+                    }}
+                  />
+                  <div
+                    className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-foreground shadow-sm"
+                    style={{ left: `${Math.min(100, Math.max(0, row.targetPct))}%`, transform: "translateX(-50%)" }}
+                    aria-hidden
+                  />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -632,7 +696,7 @@ export function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {holdings.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border/80 bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
+            <p className="rounded-md border border-dashed border-border/80 bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
               No holdings yet. Add positions from the Stocks tab when you&apos;re ready.
             </p>
           ) : null}
@@ -644,10 +708,10 @@ export function DashboardPage() {
               <Link
                 key={holding.symbol}
                 aria-label={`View ${holding.symbol} stock details`}
-                className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-border/70 bg-muted/55 p-4 transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
+                className="grid grid-cols-[auto_1fr] gap-4 rounded-md border border-border bg-card p-4 transition-colors hover:border-accent hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
                 to={`/stocks?ticker=${encodeURIComponent(holding.symbol)}`}
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-card text-xs font-semibold text-foreground sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-muted text-xs font-semibold text-foreground sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
                   {holding.symbol}
                 </div>
                 <div>
@@ -690,6 +754,7 @@ export function DashboardPage() {
                     {holding.change}%
                   </div>
                   <Badge variant={riskVariant[holding.risk]}>{holding.risk} risk</Badge>
+                  <ChevronRight className="ml-2 hidden h-4 w-4 text-muted-foreground sm:block" aria-hidden="true" />
                 </div>
               </Link>
             )
@@ -697,7 +762,7 @@ export function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-primary/20 bg-secondary/70">
+      <Card className="border-accent/25 bg-secondary">
         <CardContent className="flex items-start gap-4 p-5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary bg-card text-primary">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />
