@@ -9,7 +9,7 @@ clarity/
   frontend/            Vite + React + TypeScript app
     src/
       components/      App shell and shadcn-style UI primitives
-      pages/           Dashboard, Stocks, Scenarios, Learn
+      pages/           Dashboard, Stocks, Scenarios, Learn, Account via avatar
       store/           Zustand portfolio mock data
       lib/             Shared frontend utilities
   backend/             FastAPI backend
