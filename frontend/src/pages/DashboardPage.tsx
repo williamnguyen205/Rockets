@@ -287,9 +287,9 @@ function DeltaChip({ driftPp }: { driftPp: number }) {
     return <span className="text-xs font-medium text-muted-foreground">On target</span>
   }
   if (rounded > 0) {
-    return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">Above target</span>
+    return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">{rounded}% over target</span>
   }
-  return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">Below target</span>
+  return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">{Math.abs(rounded)}% under target</span>
 }
 
 const nextMoveByProfile: Record<InvestorProfile, string> = {
@@ -898,10 +898,10 @@ export function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Current vs target</CardTitle>
+            <CardTitle>How your mix compares with your plan</CardTitle>
             <CardDescription>
-              Targets match your <span className="font-medium text-foreground">{profile}</span> posture. Bars show
-              today&apos;s mix; the vertical line is your target for that bucket.
+              Targets match your <span className="font-medium text-foreground">{profile}</span> posture. Each bar shows
+              where your money is now; the thin line shows the goal for that bucket.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">

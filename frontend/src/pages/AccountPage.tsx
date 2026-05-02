@@ -391,7 +391,7 @@ export function AccountPage() {
             />
             <Toggle
               checked={preferences.weeklyDigest}
-              description="A weekly summary of holdings, allocation drift, and learning suggestions."
+              description="A weekly summary of holdings, how your mix compares with your plan, and learning suggestions."
               label="Weekly digest"
               onChange={() => togglePreference("weeklyDigest")}
             />

@@ -335,7 +335,7 @@ export function buildScenarioActionPlan(
                 amountUsd: trimAmount,
                 from: "Stocks",
                 to: moveToFunds > 0 ? "Mutual funds and cash" : "Cash",
-                because: `Because stocks are ${Math.max(0, Math.round(drift.stocks))} percentage points above the ${s.profile} guide, a partial trim can reduce stress without abandoning the plan.`,
+                because: `Because stocks are about ${Math.max(0, Math.round(drift.stocks))}% over the ${s.profile} guide, a partial trim can reduce stress without abandoning the plan.`,
               },
             ]
           : [
@@ -385,7 +385,7 @@ export function buildScenarioActionPlan(
           to: excessCashPct > 0 ? "Mutual funds" : "Review only",
           because:
             excessCashPct > 0
-              ? `Because cash is ${Math.round(drift.cash)} percentage points above target, only the extra cash is considered for longer-term growth.`
+              ? `Because cash is about ${Math.round(drift.cash)}% over target, only the extra cash is considered for longer-term growth.`
               : "Because cash is not above target, the better move is staying diversified and watching fund costs.",
         },
       ],

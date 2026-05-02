@@ -23,7 +23,6 @@ import {
 } from "@/lib/scenarioPortfolio"
 import { cn } from "@/lib/utils"
 import {
-  getAllocation,
   getHoldingValue,
   getPortfolioValue,
   TARGET_ALLOCATION_BY_PROFILE,
@@ -178,7 +177,7 @@ function AllocationCompare({
         <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(3, after)}%` }} />
       </div>
       <p className={cn("mt-2 text-xs font-semibold", delta === 0 ? "text-muted-foreground" : delta > 0 ? "text-primary" : "text-amber-700")}>
-        {delta === 0 ? "No change" : `${delta > 0 ? "+" : ""}${delta} percentage points`}
+        {delta === 0 ? "No change" : `${Math.abs(delta)}% ${delta > 0 ? "higher" : "lower"} after rebalance`}
       </p>
     </div>
   )
@@ -219,79 +218,6 @@ function ActionPlanCard({
       </div>
     </button>
   )
-}
-
-function reduceHoldingsByValue(holdings: Holding[], amountUsd: number, categories: Array<Holding["category"]>) {
-  let remaining = amountUsd
-  const next: Holding[] = []
-
-  const sorted = [...holdings].sort((a, b) => getHoldingValue(b) - getHoldingValue(a))
-  for (const holding of sorted) {
-    if (remaining <= 0 || !categories.includes(holding.category)) {
-      next.push(holding)
-      continue
-    }
-
-    const holdingValue = getHoldingValue(holding)
-    const saleValue = Math.min(holdingValue, remaining)
-    const sharesSold = saleValue / holding.lastPrice
-    remaining -= saleValue
-
-    const shares = holding.shares - sharesSold
-    if (shares > 0.0001) {
-      next.push({ ...holding, shares })
-    }
-  }
-
-  const originalOrder = new Map(holdings.map((holding, index) => [holding.symbol, index]))
-  return {
-    holdings: next.sort((a, b) => (originalOrder.get(a.symbol) ?? 0) - (originalOrder.get(b.symbol) ?? 0)),
-    soldUsd: amountUsd - remaining,
-  }
-}
-
-function addFundHolding(holdings: Holding[], amountUsd: number) {
-  if (amountUsd <= 0) return holdings
-
-  const symbol = "VTI"
-  const price = 252
-  const shares = amountUsd / price
-  const existing = holdings.find((holding) => holding.symbol === symbol)
-
-  if (existing) {
-    return holdings.map((holding) =>
-      holding.symbol === symbol
-        ? {
-            ...holding,
-            shares: holding.shares + shares,
-            lastPrice: price,
-            category: "fund" as const,
-            expenseRatio: 0.03,
-            diversification: "Thousands of U.S. companies in one fund",
-            plainLanguageRisk: "Still moves with the stock market, but less tied to one company.",
-            dataSource: "Curated beginner ETF profile; prices are demo values.",
-          }
-        : holding,
-    )
-  }
-
-  return [
-    ...holdings,
-    {
-      symbol,
-      name: "Vanguard Total Stock Market ETF",
-      shares,
-      averageCost: price,
-      lastPrice: price,
-      change: -0.4,
-      risk: "Medium" as const,
-      category: "fund" as const,
-      expenseRatio: 0.03,
-      diversification: "Thousands of U.S. companies in one fund",
-      plainLanguageRisk: "Still moves with the stock market, but less tied to one company.",
-      dataSource: "Curated beginner ETF profile; prices are demo values.",
-    },
-  ]
 }
 
 type SuggestedTrade = {
@@ -453,7 +379,7 @@ function SuggestedTradesCard({
 
 export function ScenariosPage() {
   const whatIfRef = useRef<HTMLDivElement>(null)
-  const { holdings, cashBalance, monthlyContribution, profile, timeline, goal, updateProfileSettings } =
+  const { holdings, cashBalance, monthlyContribution, profile, timeline, goal, updateProfileSettings, buyStock, sellStock } =
     usePortfolioStore()
   const [selectedScenarioId, setSelectedScenarioId] = useState<ScenarioId>("market_drop_20")
   const [reviewedScenarioId, setReviewedScenarioId] = useState<ScenarioId | null>(null)
@@ -578,6 +504,76 @@ export function ScenariosPage() {
     }
   }
 
+  function sellHoldingsByValue(amountUsd: number, categories: Array<Holding["category"]>) {
+    let remaining = amountUsd
+    let soldUsd = 0
+    const messages: string[] = []
+    const sorted = [...usePortfolioStore.getState().holdings]
+      .filter((holding) => categories.includes(holding.category))
+      .sort((a, b) => getHoldingValue(b) - getHoldingValue(a))
+
+    for (const holding of sorted) {
+      if (remaining <= 1) break
+      if (holding.lastPrice <= 0) continue
+
+      const currentHolding = usePortfolioStore
+        .getState()
+        .holdings.find((item) => item.symbol === holding.symbol)
+      if (!currentHolding) continue
+
+      const currentValue = getHoldingValue(currentHolding)
+      const saleValue = Math.min(currentValue, remaining)
+      const shares = Math.min(currentHolding.shares, Math.floor((saleValue / currentHolding.lastPrice) * 10000) / 10000)
+      if (shares <= 0.0001) continue
+
+      const result = sellStock({
+        symbol: currentHolding.symbol,
+        shares,
+        price: currentHolding.lastPrice,
+      })
+      if (!result.ok) {
+        messages.push(result.message)
+        continue
+      }
+
+      const actualSaleValue = shares * currentHolding.lastPrice
+      soldUsd += actualSaleValue
+      remaining -= actualSaleValue
+      messages.push(`Sold ${shares.toFixed(2)} shares of ${currentHolding.symbol}.`)
+    }
+
+    return { soldUsd, messages }
+  }
+
+  function buyPracticeFund(amountUsd: number) {
+    const price = 252
+    const availableCash = usePortfolioStore.getState().cashBalance
+    const buyAmount = Math.min(Math.max(0, amountUsd), availableCash)
+    if (buyAmount <= 1) {
+      return { boughtUsd: 0, message: "Not enough practice cash to buy the fund slice." }
+    }
+
+    const shares = Math.floor((buyAmount / price) * 10000) / 10000
+    const result = buyStock({
+      symbol: "VTI",
+      name: "Vanguard Total Stock Market ETF",
+      shares,
+      price,
+      change: -0.4,
+      category: "fund",
+      risk: "Medium",
+      expenseRatio: 0.03,
+      diversification: "Thousands of U.S. companies in one fund",
+      plainLanguageRisk: "Still moves with the stock market, but less tied to one company.",
+      dataSource: "Curated beginner ETF profile; prices are demo values.",
+    })
+
+    return {
+      boughtUsd: result.ok ? shares * price : 0,
+      message: result.ok ? `Bought ${shares.toFixed(2)} shares of VTI.` : result.message,
+    }
+  }
+
   function applyPracticePlan() {
     if (!canApplyPracticePlan) return
 
@@ -588,38 +584,40 @@ export function ScenariosPage() {
       return
     }
 
-    usePortfolioStore.setState((state) => {
-      let holdingsAfter = state.holdings
-      let cashAfter = state.cashBalance
+    const actionMessages: string[] = []
 
-      if (selectedScenarioId === "inflation_high") {
-        const buyAmount = Math.min(amount, cashAfter)
-        holdingsAfter = addFundHolding(holdingsAfter, buyAmount)
-        cashAfter -= buyAmount
-      } else if (selectedScenarioId === "withdraw_20pct_next_year") {
-        const sale = reduceHoldingsByValue(holdingsAfter, amount, ["stock", "fund"])
-        holdingsAfter = sale.holdings
-        cashAfter += sale.soldUsd
-      } else {
-        const sale = reduceHoldingsByValue(holdingsAfter, amount, ["stock"])
-        const cashTargetIncrease = Math.max(
-          0,
-          Math.round(state.cashBalance + getPortfolioValue(state.holdings, state.cashBalance) * ((selectedPlan.after.cash - selectedPlan.before.cash) / 100)),
-        )
-        const cashAdd = Math.min(sale.soldUsd, Math.max(0, cashTargetIncrease - state.cashBalance))
-        const fundAdd = Math.max(0, sale.soldUsd - cashAdd)
-        holdingsAfter = addFundHolding(sale.holdings, fundAdd)
-        cashAfter += cashAdd
+    if (selectedScenarioId === "inflation_high") {
+      const purchase = buyPracticeFund(amount)
+      actionMessages.push(purchase.message)
+    } else if (selectedScenarioId === "withdraw_20pct_next_year") {
+      const sale = sellHoldingsByValue(amount, ["stock", "fund"])
+      actionMessages.push(...sale.messages)
+      actionMessages.push(`${formatCurrency(sale.soldUsd)} moved into practice cash for the withdrawal scenario.`)
+    } else {
+      const starting = usePortfolioStore.getState()
+      const sale = sellHoldingsByValue(amount, ["stock"])
+      actionMessages.push(...sale.messages)
+
+      const cashTargetIncrease = Math.max(
+        0,
+        Math.round(starting.cashBalance + getPortfolioValue(starting.holdings, starting.cashBalance) * ((selectedPlan.after.cash - selectedPlan.before.cash) / 100)),
+      )
+      const cashToKeep = Math.min(sale.soldUsd, Math.max(0, cashTargetIncrease - starting.cashBalance))
+      const fundToBuy = Math.max(0, sale.soldUsd - cashToKeep)
+
+      if (fundToBuy > 1) {
+        const purchase = buyPracticeFund(fundToBuy)
+        actionMessages.push(purchase.message)
       }
-
-      return {
-        holdings: holdingsAfter,
-        cashBalance: cashAfter,
-        allocation: getAllocation(holdingsAfter, cashAfter),
+      if (cashToKeep > 1) {
+        actionMessages.push(`${formatCurrency(cashToKeep)} stayed in practice cash as a buffer.`)
       }
-    })
+    }
 
-    setPracticeMessage("Practice rebalance applied. The dashboard allocation now reflects the reviewed plan.")
+    setPracticeMessage(
+      `Practice rebalance applied through the same buy/sell engine as the Stocks tab. ${actionMessages.filter(Boolean).join(" ")}`,
+    )
+    setReviewedScenarioId(null)
   }
 
   return (
@@ -812,7 +810,7 @@ export function ScenariosPage() {
               </div>
 
               <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
-                <p className="text-xs font-semibold uppercase text-primary">Review before simulated trade</p>
+                <p className="text-xs font-semibold uppercase text-primary">Review before practice rebalance</p>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-foreground">
                   {selectedPlan.reviewChecklist.map((item) => (
                     <li key={item} className="flex gap-2">
@@ -839,7 +837,7 @@ export function ScenariosPage() {
                     type="button"
                     onClick={applyPracticePlan}
                   >
-                    Apply practice rebalance
+                    Execute practice rebalance
                   </Button>
                 </div>
                 {practiceMessage ? (
