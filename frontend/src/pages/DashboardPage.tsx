@@ -73,6 +73,7 @@ function PlanMetricDropdown({
   triggerText,
   children,
   menuRole = "listbox",
+  wideMenu = false,
 }: {
   open: boolean
   onOpenChange: (next: boolean) => void
@@ -81,6 +82,7 @@ function PlanMetricDropdown({
   children: ReactNode
   /** Use "none" when the panel mixes inputs with options (e.g. monthly custom amount). */
   menuRole?: "listbox" | "none"
+  wideMenu?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -101,7 +103,7 @@ function PlanMetricDropdown({
   }, [open, onOpenChange])
 
   return (
-    <div className="relative z-0" ref={ref}>
+    <div className={cn("relative", open ? "z-[80]" : "z-0")} ref={ref}>
       <button
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -127,7 +129,10 @@ function PlanMetricDropdown({
       </button>
       {open ? (
         <div
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-[200] max-h-[min(24rem,calc(100vh-8rem))] min-w-[14rem] overflow-y-auto rounded-md border border-border bg-card py-1 shadow-lg outline-none ring-1 ring-border/60"
+          className={cn(
+            "absolute left-0 top-[calc(100%+6px)] z-[200] max-h-[min(24rem,calc(100vh-8rem))] min-w-[14rem] overflow-y-auto rounded-md border border-border bg-card py-1 shadow-lg outline-none ring-1 ring-border/60",
+            wideMenu ? "right-auto w-[min(31rem,calc(100vw-3rem))] sm:w-[calc(200%+0.75rem)]" : "right-0",
+          )}
           role={menuRole === "none" ? undefined : menuRole}
         >
           {children}
@@ -640,6 +645,7 @@ export function DashboardPage() {
                 open={openMetric === "timeline"}
                 triggerLabel="Timeline"
                 triggerText={TIMELINE_CHOICES.find((t) => t.value === timeline)?.label ?? timeline}
+                wideMenu
                 onOpenChange={(next) => setOpenMetric(next ? "timeline" : null)}
               >
                 {TIMELINE_CHOICES.map((opt) => (
@@ -664,6 +670,7 @@ export function DashboardPage() {
                 open={openMetric === "goal"}
                 triggerLabel="Goal"
                 triggerText={goalChipLabel(goal)}
+                wideMenu
                 onOpenChange={(next) => setOpenMetric(next ? "goal" : null)}
               >
                 {GOAL_CHOICES.map((opt) => (
