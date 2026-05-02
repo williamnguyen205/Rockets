@@ -220,6 +220,47 @@ function ActionPlanCard({
   )
 }
 
+function RecommendedMoveCard({ plan }: { plan: ScenarioActionPlan }) {
+  const primaryTrade = plan.trades[0]
+  const hasAction = Boolean(primaryTrade && primaryTrade.amountUsd > 0)
+
+  return (
+    <div className="rounded-lg border border-primary/25 bg-primary/5 p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase text-primary">Recommended move</p>
+          <h3 className="mt-2 text-2xl font-semibold tracking-normal text-foreground">
+            {hasAction ? primaryTrade.label : "No rebalance needed right now"}
+          </h3>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            {primaryTrade?.because ??
+              "Your current mix is close enough to the target for this scenario, so the clearest action is to review your plan and avoid unnecessary trades."}
+          </p>
+        </div>
+        <div className="shrink-0 rounded-lg border border-border bg-card p-4 lg:min-w-64">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Practice amount</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums text-primary">
+            {formatCurrency(primaryTrade?.amountUsd ?? 0)}
+          </p>
+          <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span>{primaryTrade?.from ?? "Current mix"}</span>
+            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span>{primaryTrade?.to ?? "Review only"}</span>
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground">
+          {plan.transparency.confidence} confidence
+        </span>
+        <span className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground">
+          Review required before practice rebalance
+        </span>
+      </div>
+    </div>
+  )
+}
+
 type SuggestedTrade = {
   action: "sell" | "buy"
   symbol?: string
@@ -736,25 +777,7 @@ export function ScenariosPage() {
           </CardHeader>
           <CardContent className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
             <div className="space-y-5">
-              <div className="rounded-md border border-border bg-card p-4">
-                <p className="text-xs font-semibold uppercase text-muted-foreground">Recommended practice moves</p>
-                <div className="mt-3 space-y-3">
-                  {selectedPlan.trades.map((trade) => (
-                    <div key={`${trade.label}-${trade.to}`} className="rounded-md border border-border bg-muted/35 p-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{trade.label}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {trade.from} -&gt; {trade.to}
-                          </p>
-                        </div>
-                        <p className="text-lg font-semibold text-primary">{formatCurrency(trade.amountUsd)}</p>
-                      </div>
-                      <p className="mt-3 text-sm leading-6 text-muted-foreground">{trade.because}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <RecommendedMoveCard plan={selectedPlan} />
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <AllocationCompare label="Stocks" before={selectedPlan.before.stocks} after={selectedPlan.after.stocks} />
