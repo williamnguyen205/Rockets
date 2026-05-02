@@ -15,10 +15,12 @@ import {
   ArrowRight,
   ArrowUpRight,
   BarChart3,
+  Check,
   CircleDollarSign,
   Search,
   TrendingUp,
   Wallet,
+  X,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -100,6 +102,7 @@ export function StocksPage() {
   const [tradeShares, setTradeShares] = useState("1")
   const [tradeMessage, setTradeMessage] = useState("")
   const [tradeError, setTradeError] = useState("")
+  const [pendingTrade, setPendingTrade] = useState<{ action: "buy" | "sell"; shares: number; price: number } | null>(null)
   const { holdings, cashBalance, buyStock, sellStock } = usePortfolioStore()
   const selectedFund = beginnerFunds.find((fund) => fund.symbol === ticker)
 
@@ -193,7 +196,7 @@ export function StocksPage() {
     setTradeError("")
   }
 
-  function handleTrade(action: "buy" | "sell") {
+  function requestTrade(action: "buy" | "sell") {
     if (!quote) return
 
     const shares = Number(tradeShares)
@@ -203,13 +206,22 @@ export function StocksPage() {
       return
     }
 
+    setTradeError("")
+    setTradeMessage("")
+    setPendingTrade({ action, shares, price: quote.price })
+  }
+
+  function confirmTrade() {
+    if (!pendingTrade || !quote) return
+
+    const { action, shares, price } = pendingTrade
     const result =
       action === "buy"
         ? buyStock({
             symbol: quote.ticker,
             name: selectedFund?.name ?? quote.name,
             shares,
-            price: quote.price,
+            price,
             change: quote.changePercent,
             category: selectedFund ? "fund" : "stock",
             risk: selectedFund?.symbol === "BND" ? "Low" : "Medium",
@@ -220,12 +232,9 @@ export function StocksPage() {
               ? "Live ETF quote from market data when available; fee/risk profile from curated beginner fund shelf."
               : "Live stock quote from FastAPI/yfinance when available.",
           })
-        : sellStock({
-            symbol: quote.ticker,
-            shares,
-            price: quote.price,
-          })
+        : sellStock({ symbol: quote.ticker, shares, price })
 
+    setPendingTrade(null)
     if (result.ok) {
       setTradeError("")
       setTradeMessage(result.message)
@@ -233,6 +242,12 @@ export function StocksPage() {
       setTradeMessage("")
       setTradeError(result.message)
     }
+  }
+
+  function cancelTrade() {
+    setPendingTrade(null)
+    setTradeError("")
+    setTradeMessage("")
   }
 
   return (
@@ -445,18 +460,20 @@ export function StocksPage() {
                           setTradeShares(event.target.value)
                           setTradeMessage("")
                           setTradeError("")
+                          setPendingTrade(null)
                         }}
                       />
                     </label>
                     <div className="flex items-end gap-2">
-                      <Button className="h-10 flex-1" type="button" onClick={() => handleTrade("buy")}>
+                      <Button className="h-10 flex-1" disabled={!!pendingTrade} type="button" onClick={() => requestTrade("buy")}>
                         Buy
                       </Button>
                       <Button
                         className="h-10 flex-1"
+                        disabled={!!pendingTrade}
                         type="button"
                         variant="secondary"
-                        onClick={() => handleTrade("sell")}
+                        onClick={() => requestTrade("sell")}
                       >
                         Sell
                       </Button>
@@ -466,6 +483,39 @@ export function StocksPage() {
                     <span className="text-muted-foreground">Estimated value</span>
                     <span className="font-semibold text-foreground">{formatCurrency(tradeValue)}</span>
                   </div>
+
+                  {pendingTrade ? (
+                    <div className="mt-3 rounded-md border border-amber-300/60 bg-amber-50/80 p-3 dark:border-amber-700/40 dark:bg-amber-950/30">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                        Confirm trade
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-foreground">
+                        <span className={cn(
+                          "mr-1.5 rounded px-1.5 py-0.5 text-[0.65rem] font-bold uppercase",
+                          pendingTrade.action === "buy"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                            : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"
+                        )}>
+                          {pendingTrade.action}
+                        </span>
+                        {pendingTrade.shares} share{pendingTrade.shares !== 1 ? "s" : ""} of {quote?.ticker} at {formatCurrency(pendingTrade.price)} each
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        Total: {formatCurrency(pendingTrade.shares * pendingTrade.price)}
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <Button className="h-8 flex-1 text-xs" type="button" onClick={confirmTrade}>
+                          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                          Confirm
+                        </Button>
+                        <Button className="h-8 flex-1 text-xs" type="button" variant="ghost" onClick={cancelTrade}>
+                          <X className="h-3.5 w-3.5" aria-hidden="true" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
                   {tradeMessage ? <p className="mt-3 text-xs font-medium text-primary">{tradeMessage}</p> : null}
                   {tradeError ? <p className="mt-3 text-xs font-medium text-rose-700">{tradeError}</p> : null}
                 </div>
