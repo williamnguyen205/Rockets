@@ -18,6 +18,7 @@ import {
   Check,
   CircleDollarSign,
   Search,
+  ShieldAlert,
   TrendingUp,
   Wallet,
   X,
@@ -27,7 +28,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getStockHistory, getStockQuote, type StockHistoryPoint, type StockQuote } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { getHoldingValue, usePortfolioStore } from "@/store/portfolio"
+import { getHoldingValue, usePortfolioStore, type RiskLevel } from "@/store/portfolio"
 
 const popularTickers = ["AAPL", "GOOGL", "TSLA", "MSFT", "NVDA"]
 const beginnerFunds = [
@@ -57,6 +58,83 @@ const periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "all"]
 
 function apiPeriod(p: string) {
   return p === "all" ? "max" : p
+}
+
+const riskVariant: Record<RiskLevel, "low" | "medium" | "high"> = {
+  Low: "low",
+  Medium: "medium",
+  High: "high",
+}
+
+function formatMcap(value: number): string {
+  if (value >= 1_000_000_000_000) return `$${(value / 1e12).toFixed(1)}T`
+  if (value >= 1_000_000_000) return `$${(value / 1e9).toFixed(0)}B`
+  return `$${(value / 1e6).toFixed(0)}M`
+}
+
+function deriveRisk(
+  quote: StockQuote,
+  fundRiskOverride?: string,
+): { level: RiskLevel; reasons: string[] } {
+  const reasons: string[] = []
+  let score = 0
+
+  // 1. Market cap — primary signal
+  const mcap = quote.marketCap
+  if (mcap === null) {
+    score += 3
+    reasons.push("Market cap data unavailable — treat as higher risk when fundamentals are scarce.")
+  } else if (mcap > 200_000_000_000) {
+    score += 0
+    reasons.push(
+      `Mega-cap (${formatMcap(mcap)} market cap) — one of the largest, most liquid stocks in the world. High institutional ownership helps absorb selling pressure and limits extreme swings.`,
+    )
+  } else if (mcap > 10_000_000_000) {
+    score += 1
+    reasons.push(
+      `Large-cap (${formatMcap(mcap)} market cap) — well-established company with broad analyst coverage. Still subject to market cycles, but less likely to collapse on a single piece of news.`,
+    )
+  } else if (mcap > 2_000_000_000) {
+    score += 2
+    reasons.push(
+      `Mid-cap (${formatMcap(mcap)} market cap) — growing company with more room to run, but also more sensitive to earnings surprises and sector-specific news.`,
+    )
+  } else {
+    score += 3
+    reasons.push(
+      `Small/micro-cap (${formatMcap(mcap)} market cap) — lower trading volume means even modest buying or selling can cause sharp price moves.`,
+    )
+  }
+
+  // 2. Intraday range spread — volatility signal
+  if (quote.dayHigh && quote.dayLow && quote.price > 0) {
+    const spread = ((quote.dayHigh - quote.dayLow) / quote.price) * 100
+    if (spread > 4) {
+      score += 1
+      reasons.push(
+        `Wide intraday range today (${spread.toFixed(1)}% of price) — the gap between today's high and low suggests elevated short-term volatility.`,
+      )
+    } else if (spread > 0) {
+      reasons.push(
+        `Tight intraday range today (${spread.toFixed(1)}% of price) — price has stayed relatively contained this session.`,
+      )
+    }
+  }
+
+  // 3. Single-day move magnitude
+  const absChange = Math.abs(quote.changePercent ?? 0)
+  if (absChange > 5) {
+    score += 1
+    reasons.push(`Moved ${absChange.toFixed(1)}% today — an unusually large single-day swing; worth watching if this becomes a pattern.`)
+  }
+
+  // For funds, prepend the curated plain-English explanation
+  if (fundRiskOverride) {
+    reasons.unshift(fundRiskOverride)
+  }
+
+  const level: RiskLevel = score >= 4 ? "High" : score >= 2 ? "Medium" : "Low"
+  return { level, reasons: reasons.slice(0, 3) }
 }
 
 function formatCompact(value: number | null) {
@@ -159,6 +237,10 @@ export function StocksPage() {
     return [Math.floor(min - padding), Math.ceil(max + padding)]
   }, [history])
   const recentHistory = useMemo(() => history.slice(-6).reverse(), [history])
+  const derivedRisk = useMemo(
+    () => (quote ? deriveRisk(quote, selectedFund?.plainLanguageRisk) : null),
+    [quote, selectedFund],
+  )
   const currentHolding = useMemo(
     () => holdings.find((holding) => holding.symbol === ticker),
     [holdings, ticker],
@@ -400,7 +482,7 @@ export function StocksPage() {
               </div>
 
               {selectedFund ? (
-                <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-md border border-border bg-muted/45 p-4">
                     <p className="text-xs font-medium text-muted-foreground">Expense ratio</p>
                     <p className="mt-1 text-lg font-semibold text-foreground">
@@ -411,10 +493,24 @@ export function StocksPage() {
                     <p className="text-xs font-medium text-muted-foreground">Diversification</p>
                     <p className="mt-1 text-sm font-semibold leading-6 text-foreground">{selectedFund.diversification}</p>
                   </div>
-                  <div className="rounded-md border border-border bg-muted/45 p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Plain-English risk</p>
-                    <p className="mt-1 text-sm font-semibold leading-6 text-foreground">{selectedFund.plainLanguageRisk}</p>
+                </div>
+              ) : null}
+
+              {derivedRisk ? (
+                <div className="mt-4 rounded-md border border-border bg-card p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4 text-accent" aria-hidden="true" />
+                    <p className="text-sm font-semibold text-foreground">Risk assessment</p>
+                    <Badge variant={riskVariant[derivedRisk.level]}>{derivedRisk.level} risk</Badge>
                   </div>
+                  <ul className="space-y-2">
+                    {derivedRisk.reasons.map((reason, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+                        {reason}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
 
