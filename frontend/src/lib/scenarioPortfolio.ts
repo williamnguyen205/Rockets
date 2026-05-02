@@ -104,9 +104,9 @@ function isShortHorizon(timeline: InvestmentTimeline) {
 
 function snapshotToAllocationItems(s: ScenarioPortfolioSnapshot): AllocationItem[] {
   return [
-    { name: "Stocks", value: s.stocksPct, color: "#34a85a" },
-    { name: "Mutual Funds", value: s.fundsPct, color: "#4682b4" },
-    { name: "Cash", value: s.cashPct, color: "#6495ed" },
+    { name: "Stocks", value: s.stocksPct, color: "#0f766e" },
+    { name: "Mutual Funds", value: s.fundsPct, color: "#2563eb" },
+    { name: "Cash", value: s.cashPct, color: "#64748b" },
   ]
 }
 
