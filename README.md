@@ -6,18 +6,23 @@ Clarity is a practice investing workspace for beginner investors: a React dashbo
 
 ```txt
 clarity/
-  frontend/                 Vite + React + TypeScript
-    src/
-      components/           App shell (sidebar + mobile nav), tutor, UI primitives, gates
-      pages/                Auth, onboarding wizard, dashboard, stocks, scenarios, learn, account
-      store/                Zustand portfolio state (persisted)
-      lib/                  API client, session helpers, utilities
-  backend/                  FastAPI
-    main.py                 App, CORS, routers
-    routes/ai.py            Learn tutor + scenario explanation/simulation (Ollama)
-    routes/stocks.py        Quotes, history, batch
-    requirements.txt
-  package.json              Root scripts (delegate to frontend/backend)
+├── frontend/                         # Vite + React + TypeScript app
+│   ├── src/
+│   │   ├── components/               # App shell, tutor UI, reusable primitives, gates
+│   │   ├── pages/                    # Auth, onboarding, dashboard, stocks, scenarios, learn, account
+│   │   ├── store/                    # Zustand portfolio state (persisted)
+│   │   └── lib/                      # API client, session helpers, utility functions
+│   ├── package.json
+│   └── README.md
+├── backend/                          # FastAPI service
+│   ├── main.py                       # App bootstrap, CORS, router registration
+│   ├── routes/
+│   │   ├── ai.py                     # /ai/learn, /ai/scenario-explain, /ai/scenario-simulate
+│   │   └── stocks.py                 # /stock/* and /stocks/batch endpoints
+│   ├── requirements.txt
+│   └── README.md
+├── package.json                      # Root scripts (delegate to frontend/backend)
+└── README.md
 ```
 
 ## Tech stack
