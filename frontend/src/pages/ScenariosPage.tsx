@@ -55,7 +55,7 @@ export function ScenariosPage() {
             {chartSeries.map((series) => (
               <div
                 key={series.key}
-                className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs font-medium text-muted-foreground"
+                className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/55 px-3 py-1.5 text-xs font-medium text-muted-foreground"
               >
                 <span
                   className="h-2.5 w-2.5 rounded-full"

@@ -28,8 +28,8 @@ function AllocationTooltip({
   if (!active || !payload?.length) return null
 
   return (
-    <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-panel">
-      <p className="font-medium text-white">{payload[0].name}</p>
+    <div className="rounded-lg border border-border bg-popover px-3 py-2 text-sm shadow-panel">
+      <p className="font-medium text-foreground">{payload[0].name}</p>
       <p className="text-muted-foreground">{payload[0].value}% allocation</p>
     </div>
   )
@@ -48,7 +48,7 @@ function HealthRing({ score }: { score: number }) {
           cy="110"
           fill="none"
           r={radius}
-          stroke="rgba(255,255,255,0.08)"
+          stroke="rgba(8,13,33,0.1)"
           strokeWidth="12"
         />
         <circle
@@ -69,8 +69,8 @@ function HealthRing({ score }: { score: number }) {
           </linearGradient>
         </defs>
       </svg>
-      <div className="text-center">
-        <div className="text-6xl font-semibold tracking-normal text-white">{score}</div>
+      <div className="relative z-10 text-center">
+        <div className="text-5xl font-semibold tracking-normal text-foreground">{score}</div>
         <div className="mt-2 text-sm font-medium text-muted-foreground">Portfolio Health</div>
       </div>
     </div>
@@ -95,7 +95,7 @@ export function DashboardPage() {
         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-glow">
           <Sparkles className="h-5 w-5" aria-hidden="true" />
         </div>
-        <h1 className="text-4xl font-semibold tracking-normal text-white">Financial clarity, instantly.</h1>
+        <h1 className="text-4xl font-semibold tracking-normal text-foreground">Financial clarity, instantly.</h1>
         <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground">
           A calm command center for understanding your risk, allocation, and holdings without spreadsheet anxiety.
         </p>
@@ -108,7 +108,7 @@ export function DashboardPage() {
             {[profile, timeline, goal].map((chip) => (
               <div
                 key={chip}
-                className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-center text-xs font-medium text-muted-foreground"
+                className="rounded-full border border-border/70 bg-muted/55 px-3 py-2 text-center text-xs font-medium text-muted-foreground"
               >
                 {chip}
               </div>
@@ -148,23 +148,23 @@ export function DashboardPage() {
               {allocation.map((item) => (
                 <div
                   key={item.name}
-                  className="flex items-center justify-between rounded-md border border-white/[0.08] bg-white/[0.035] px-4 py-3"
+                  className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/55 px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className="h-2.5 w-2.5 rounded-full"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-sm font-medium text-white">{item.name}</span>
+                    <span className="text-sm font-medium text-foreground">{item.name}</span>
                   </div>
                   <span className="text-sm font-semibold text-muted-foreground">{item.value}%</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="mt-5 rounded-md border border-white/[0.08] bg-white/[0.035] px-4 py-3">
+          <div className="mt-5 rounded-lg border border-border/70 bg-muted/55 px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-white">Cash available</span>
+              <span className="text-sm font-medium text-foreground">Cash available</span>
               <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
             </div>
           </div>
@@ -185,26 +185,26 @@ export function DashboardPage() {
               <Link
                 key={holding.symbol}
                 aria-label={`View ${holding.symbol} stock details`}
-                className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:border-primary/40 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
+                className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-border/70 bg-muted/55 p-4 transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
                 to={`/stocks?ticker=${encodeURIComponent(holding.symbol)}`}
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-background text-xs font-semibold text-white sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-white text-xs font-semibold text-foreground sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
                   {holding.symbol}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">{holding.name}</p>
+                  <p className="text-sm font-medium text-foreground">{holding.name}</p>
                   <p className="text-xs text-muted-foreground sm:hidden">
                     {holding.shares.toFixed(2)} shares · {formatCurrency(value)}
                   </p>
                 </div>
-                <div className="hidden text-sm font-medium text-white sm:block">
+                <div className="hidden text-sm font-medium text-foreground sm:block">
                   {holding.shares.toFixed(2)} sh
                 </div>
-                <div className="hidden text-sm font-medium text-white sm:block">{formatCurrency(value)}</div>
+                <div className="hidden text-sm font-medium text-foreground sm:block">{formatCurrency(value)}</div>
                 <div
                   className={cn(
                     "hidden items-center gap-1 text-sm font-semibold sm:flex",
-                    positive ? "text-emerald-300" : "text-rose-300",
+                    positive ? "text-emerald-700" : "text-rose-700",
                   )}
                 >
                   {positive ? (
@@ -219,7 +219,7 @@ export function DashboardPage() {
                   <div
                     className={cn(
                       "flex items-center gap-1 text-sm font-semibold sm:hidden",
-                      positive ? "text-emerald-300" : "text-rose-300",
+                      positive ? "text-emerald-700" : "text-rose-700",
                     )}
                   >
                     {positive ? (
@@ -238,13 +238,13 @@ export function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-primary/20 bg-primary/[0.07]">
+      <Card className="border-primary/20 bg-secondary/70">
         <CardContent className="flex items-start gap-4 p-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/[0.15] text-primary">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary bg-white text-primary">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">Suggested next move</p>
+            <p className="text-sm font-semibold text-foreground">Suggested next move</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Keep cash near 15% while gradually adding to diversified mutual funds. Your portfolio is healthy, but a little more broad exposure would smooth volatility.
             </p>
