@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { getStockHistory, getStockQuote, type StockHistoryPoint, type StockQuote } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { getHoldingValue, usePortfolioStore, type RiskLevel } from "@/store/portfolio"
+import { estimateHoldingRisk, getHoldingValue, usePortfolioStore, type RiskLevel } from "@/store/portfolio"
 
 const popularTickers = ["AAPL", "GOOGL", "TSLA", "MSFT", "NVDA"]
 const beginnerFunds = [
@@ -56,6 +56,13 @@ const beginnerFunds = [
 ]
 const periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "all"]
 
+type SearchSuggestion = {
+  symbol: string
+  label: string
+  description: string
+  kind: "Stock" | "Fund / ETF"
+}
+
 function apiPeriod(p: string) {
   return p === "all" ? "max" : p
 }
@@ -72,12 +79,45 @@ function formatMcap(value: number): string {
   return `$${(value / 1e6).toFixed(0)}M`
 }
 
-function deriveRisk(
-  quote: StockQuote,
-  fundRiskOverride?: string,
-): { level: RiskLevel; reasons: string[] } {
+function deriveRisk({
+  quote,
+  fundRiskOverride,
+  isFund,
+}: {
+  quote: StockQuote
+  fundRiskOverride?: string
+  isFund: boolean
+}): { level: RiskLevel; reasons: string[] } {
+  if (isFund) {
+    return {
+      level: "Low",
+      reasons: [
+        fundRiskOverride ??
+          "Diversified funds, ETFs, mutual-fund-style holdings, and bond funds are treated as lower risk in this prototype because one holding spreads money across many investments.",
+        "The price can still fall, but it is less dependent on a single company's news than an individual stock.",
+      ],
+    }
+  }
+
   const reasons: string[] = []
   let score = 0
+  const volatilityLevel = estimateHoldingRisk({
+    category: "stock",
+    change: quote.changePercent,
+    symbol: quote.ticker,
+  })
+
+  if (volatilityLevel === "High") {
+    score += 4
+    reasons.push(
+      "High volatility signal — this individual stock is more likely to have large price swings, so a beginner should treat it as higher risk.",
+    )
+  } else if (volatilityLevel === "Medium") {
+    score += 1
+    reasons.push(
+      "Individual stock exposure — one company's news can move the price more sharply than a diversified fund.",
+    )
+  }
 
   // 1. Market cap — primary signal
   const mcap = quote.marketCap
@@ -126,11 +166,6 @@ function deriveRisk(
   if (absChange > 5) {
     score += 1
     reasons.push(`Moved ${absChange.toFixed(1)}% today — an unusually large single-day swing; worth watching if this becomes a pattern.`)
-  }
-
-  // For funds, prepend the curated plain-English explanation
-  if (fundRiskOverride) {
-    reasons.unshift(fundRiskOverride)
   }
 
   const level: RiskLevel = score >= 4 ? "High" : score >= 2 ? "Medium" : "Low"
@@ -184,9 +219,33 @@ export function StocksPage() {
   const [tradeShares, setTradeShares] = useState("1")
   const [tradeMessage, setTradeMessage] = useState("")
   const [tradeError, setTradeError] = useState("")
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [pendingTrade, setPendingTrade] = useState<{ action: "buy" | "sell"; shares: number; price: number } | null>(null)
   const { holdings, cashBalance, buyStock, sellStock } = usePortfolioStore()
   const selectedFund = beginnerFunds.find((fund) => fund.symbol === ticker)
+  const searchSuggestions = useMemo<SearchSuggestion[]>(() => {
+    const stockSuggestions = popularTickers.map((symbol) => ({
+      symbol,
+      label: symbol,
+      description: "Popular stock",
+      kind: "Stock" as const,
+    }))
+    const fundSuggestions = beginnerFunds.map((fund) => ({
+      symbol: fund.symbol,
+      label: fund.name,
+      description: `${fund.expenseRatio.toFixed(2)}% yearly fee · ${fund.diversification}`,
+      kind: "Fund / ETF" as const,
+    }))
+    const query = tickerInput.trim().toUpperCase()
+    const suggestions = [...stockSuggestions, ...fundSuggestions]
+    if (!query) return suggestions
+    return suggestions.filter(
+      (suggestion) =>
+        suggestion.symbol.includes(query) ||
+        suggestion.label.toUpperCase().includes(query) ||
+        suggestion.kind.toUpperCase().includes(query),
+    )
+  }, [tickerInput])
 
   useEffect(() => {
     let cancelled = false
@@ -238,7 +297,14 @@ export function StocksPage() {
   }, [history])
   const recentHistory = useMemo(() => history.slice(-6).reverse(), [history])
   const derivedRisk = useMemo(
-    () => (quote ? deriveRisk(quote, selectedFund?.plainLanguageRisk) : null),
+    () =>
+      quote
+        ? deriveRisk({
+            quote,
+            fundRiskOverride: selectedFund?.plainLanguageRisk,
+            isFund: Boolean(selectedFund),
+          })
+        : null,
     [quote, selectedFund],
   )
   const currentHolding = useMemo(
@@ -273,11 +339,13 @@ export function StocksPage() {
 
     setTickerInput(nextTicker)
     setSearchParams({ ticker: nextTicker })
+    setSuggestionsOpen(false)
   }
 
   function selectTicker(nextTicker: string) {
     setTickerInput(nextTicker)
     setSearchParams({ ticker: nextTicker })
+    setSuggestionsOpen(false)
     setTradeMessage("")
     setTradeError("")
   }
@@ -310,7 +378,7 @@ export function StocksPage() {
             price,
             change: quote.changePercent,
             category: selectedFund ? "fund" : "stock",
-            risk: selectedFund ? "Low" : undefined,
+            risk: selectedFund ? "Low" : derivedRisk?.level,
             expenseRatio: selectedFund?.expenseRatio,
             diversification: selectedFund?.diversification,
             plainLanguageRisk: selectedFund?.plainLanguageRisk,
@@ -358,62 +426,61 @@ export function StocksPage() {
                 className="h-12 w-full rounded-md border border-input bg-card pl-10 pr-4 text-sm font-semibold uppercase text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-ring/20"
                 placeholder="AAPL"
                 value={tickerInput}
-                onChange={(event) => setTickerInput(event.target.value)}
+                onBlur={() => {
+                  window.setTimeout(() => setSuggestionsOpen(false), 120)
+                }}
+                onChange={(event) => {
+                  setTickerInput(event.target.value)
+                  setSuggestionsOpen(true)
+                }}
+                onFocus={() => setSuggestionsOpen(true)}
               />
+              {suggestionsOpen ? (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-lg border border-border bg-card shadow-panel">
+                  <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+                    Suggestions
+                  </div>
+                  {searchSuggestions.length > 0 ? (
+                    <div className="max-h-80 overflow-y-auto p-1">
+                      {searchSuggestions.map((suggestion) => (
+                        <button
+                          key={`${suggestion.kind}-${suggestion.symbol}`}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                            suggestion.symbol === ticker && "bg-primary/10",
+                          )}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => selectTicker(suggestion.symbol)}
+                        >
+                          <span className="min-w-0">
+                            <span className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-foreground">{suggestion.symbol}</span>
+                              <span className="rounded-md border border-border bg-muted/45 px-1.5 py-0.5 text-[0.65rem] font-semibold text-muted-foreground">
+                                {suggestion.kind}
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                              {suggestion.description}
+                            </span>
+                          </span>
+                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="px-3 py-4 text-sm text-muted-foreground">
+                      No preset suggestions. Press Lookup to search this ticker.
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
             <Button className="h-11" disabled={loading} type="submit">
               {loading ? "Searching..." : "Lookup"}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Button>
           </form>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {popularTickers.map((item) => (
-              <button
-                key={item}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-                  item === ticker
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground",
-                )}
-                type="button"
-                onClick={() => selectTicker(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-5 rounded-md border border-primary/20 bg-primary/5 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase text-primary">Beginner fund shelf</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  These ETFs stand in for mutual-fund style diversification in the prototype.
-                </p>
-              </div>
-              <span className="text-xs font-semibold text-muted-foreground">Fees shown before simulated buys</span>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {beginnerFunds.map((fund) => (
-                <button
-                  key={fund.symbol}
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-left text-xs transition-colors",
-                    fund.symbol === ticker
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground",
-                  )}
-                  type="button"
-                  onClick={() => selectTicker(fund.symbol)}
-                >
-                  <span className="block font-semibold">{fund.symbol}</span>
-                  <span className="block">{fund.expenseRatio.toFixed(2)}% yearly fee</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </CardContent>
       </Card>
 
