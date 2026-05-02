@@ -85,6 +85,7 @@ type PortfolioState = {
   resetOnboarding: () => void
   /** Empty holdings/cash and reset profile defaults for a brand-new account (create flow). */
   prepareNewAccount: () => void
+  setCashBalance: (amount: number) => void
   buyStock: (trade: {
     symbol: string
     name: string
@@ -254,6 +255,13 @@ export const usePortfolioStore = create<PortfolioState>()(
             monthlyContribution: initialMonthlyContribution,
           }),
         })
+      },
+      setCashBalance: (amount) => {
+        const cashBalance = Math.max(0, amount)
+        set((state) => ({
+          cashBalance,
+          allocation: getAllocation(state.holdings, cashBalance),
+        }))
       },
       buyStock: ({
         symbol,

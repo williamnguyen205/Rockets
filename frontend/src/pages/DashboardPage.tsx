@@ -268,10 +268,19 @@ export function DashboardPage() {
     holdings,
     cashBalance,
     updateProfileSettings,
+    setCashBalance,
   } = usePortfolioStore()
 
   const [openMetric, setOpenMetric] = useState<"profile" | "timeline" | "goal" | "monthly" | null>(null)
   const [monthlyInputDraft, setMonthlyInputDraft] = useState("")
+  const [cashPanelOpen, setCashPanelOpen] = useState(false)
+  const [cashDraft, setCashDraft] = useState("")
+
+  function commitCash() {
+    const parsed = parseFloat(cashDraft.replace(/,/g, ""))
+    setCashBalance(Number.isFinite(parsed) ? parsed : 0)
+    setCashPanelOpen(false)
+  }
 
   function commitMonthlyFromDraft() {
     const parsed = Number.parseFloat(monthlyInputDraft.replace(/,/g, ""))
@@ -637,10 +646,53 @@ export function DashboardPage() {
               </div>
             </div>
             <div className="rounded-md border border-border bg-muted/45 px-4 py-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-medium text-foreground">Cash available</span>
-                <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
+                  <button
+                    className="rounded-md border border-border px-2 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    type="button"
+                    onClick={() => {
+                      setCashDraft(cashBalance > 0 ? String(cashBalance) : "")
+                      setCashPanelOpen((prev) => !prev)
+                    }}
+                  >
+                    {cashPanelOpen ? "Cancel" : "Edit"}
+                  </button>
+                </div>
               </div>
+              {cashPanelOpen ? (
+                <div className="mt-3 flex items-center gap-2">
+                  <label className="flex flex-1 items-center gap-1 rounded-lg border border-border bg-background px-2 focus-within:ring-2 focus-within:ring-ring/30">
+                    <span className="pl-1 text-xs font-semibold text-muted-foreground">$</span>
+                    <input
+                      autoFocus
+                      className="min-w-0 flex-1 bg-transparent py-2 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
+                      inputMode="decimal"
+                      placeholder="10000"
+                      type="text"
+                      value={cashDraft}
+                      onChange={(e) => {
+                        let next = e.target.value.replace(/[^\d.]/g, "")
+                        const dot = next.indexOf(".")
+                        if (dot !== -1) next = `${next.slice(0, dot + 1)}${next.slice(dot + 1).replace(/\./g, "")}`
+                        setCashDraft(next)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); commitCash() }
+                      }}
+                    />
+                  </label>
+                  <button
+                    className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    type="button"
+                    onClick={commitCash}
+                  >
+                    Set
+                  </button>
+                </div>
+              ) : null}
             </div>
           </CardContent>
         </Card>
