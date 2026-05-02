@@ -67,9 +67,10 @@ type PortfolioState = {
   allocation: AllocationItem[]
   holdings: Holding[]
   updateProfileSettings: (settings: {
-    profile: InvestorProfile
-    timeline: InvestmentTimeline
-    monthlyContribution: number
+    profile?: InvestorProfile
+    timeline?: InvestmentTimeline
+    monthlyContribution?: number
+    goal?: string
   }) => void
   completeOnboarding: (input: {
     profile: InvestorProfile
@@ -78,6 +79,8 @@ type PortfolioState = {
     monthlyContribution: number
   }) => void
   resetOnboarding: () => void
+  /** Empty holdings/cash and reset profile defaults for a brand-new account (create flow). */
+  prepareNewAccount: () => void
   buyStock: (trade: {
     symbol: string
     name: string
@@ -130,76 +133,39 @@ function getHealthScore({
 }
 
 function getAllocation(holdings: Holding[], cashBalance: number): AllocationItem[] {
-  const stocks = holdings
+  const stocksVal = holdings
     .filter((holding) => holding.category === "stock")
     .reduce((total, holding) => total + getHoldingValue(holding), 0)
-  const funds = holdings
+  const fundsVal = holdings
     .filter((holding) => holding.category === "fund")
     .reduce((total, holding) => total + getHoldingValue(holding), 0)
-  const total = stocks + funds + cashBalance
+  const total = stocksVal + fundsVal + cashBalance
 
-  if (!total) {
+  // Nothing invested yet: show 100% cash so charts match "all dry powder / uninvested" reality.
+  if (total <= 0) {
     return [
       { name: "Stocks", value: 0, color: "#34a85a" },
       { name: "Mutual Funds", value: 0, color: "#4682b4" },
-      { name: "Cash", value: 0, color: "#6495ed" },
+      { name: "Cash", value: 100, color: "#6495ed" },
     ]
   }
 
+  const stocksPct = Math.round((stocksVal / total) * 100)
+  const fundsPct = Math.round((fundsVal / total) * 100)
+  const cashPct = Math.max(0, 100 - stocksPct - fundsPct)
+
   return [
-    { name: "Stocks", value: Math.round((stocks / total) * 100), color: "#34a85a" },
-    { name: "Mutual Funds", value: Math.round((funds / total) * 100), color: "#4682b4" },
-    { name: "Cash", value: Math.round((cashBalance / total) * 100), color: "#6495ed" },
+    { name: "Stocks", value: stocksPct, color: "#34a85a" },
+    { name: "Mutual Funds", value: fundsPct, color: "#4682b4" },
+    { name: "Cash", value: cashPct, color: "#6495ed" },
   ]
 }
 
-const initialHoldings: Holding[] = [
-  {
-    symbol: "AAPL",
-    name: "Apple Inc",
-    shares: 15,
-    averageCost: 255,
-    lastPrice: 280,
-    change: 2.4,
-    risk: "Low",
-    category: "stock",
-  },
-  {
-    symbol: "GOOGL",
-    name: "Alphabet Inc",
-    shares: 12,
-    averageCost: 250,
-    lastPrice: 258,
-    change: -0.8,
-    risk: "Medium",
-    category: "stock",
-  },
-  {
-    symbol: "HDFC",
-    name: "HDFC Mutual Fund",
-    shares: 56,
-    averageCost: 50,
-    lastPrice: 50,
-    change: 1.1,
-    risk: "Low",
-    category: "fund",
-  },
-  {
-    symbol: "TSLA",
-    name: "Tesla Inc",
-    shares: 4,
-    averageCost: 330,
-    lastPrice: 350,
-    change: -3.2,
-    risk: "High",
-    category: "stock",
-  },
-]
-
-const initialCashBalance = 2500
+const initialHoldings: Holding[] = []
+const initialCashBalance = 0
 const initialProfile: InvestorProfile = "Conservative"
 const initialTimeline: InvestmentTimeline = "5-10 years"
-const initialMonthlyContribution = 650
+const initialMonthlyContribution = 0
 
 export const usePortfolioStore = create<PortfolioState>()(
   persist(
@@ -217,17 +183,25 @@ export const usePortfolioStore = create<PortfolioState>()(
       cashBalance: initialCashBalance,
       allocation: getAllocation(initialHoldings, initialCashBalance),
       holdings: initialHoldings,
-      updateProfileSettings: ({ profile, timeline, monthlyContribution }) => {
-        const normalizedContribution = Math.max(0, monthlyContribution)
+      updateProfileSettings: (settings) => {
+        const state = get()
+        const profile = settings.profile ?? state.profile
+        const timeline = settings.timeline ?? state.timeline
+        const monthlyContribution =
+          settings.monthlyContribution !== undefined
+            ? Math.max(0, settings.monthlyContribution)
+            : state.monthlyContribution
+        const goal = settings.goal !== undefined ? settings.goal : state.goal
 
         set({
           profile,
           timeline,
-          monthlyContribution: normalizedContribution,
+          monthlyContribution,
+          goal,
           healthScore: getHealthScore({
             profile,
             timeline,
-            monthlyContribution: normalizedContribution,
+            monthlyContribution,
           }),
         })
       },
@@ -249,6 +223,25 @@ export const usePortfolioStore = create<PortfolioState>()(
       },
       resetOnboarding: () => {
         set({ onboarded: false })
+      },
+      prepareNewAccount: () => {
+        const holdings: Holding[] = []
+        const cashBalance = 0
+        set({
+          onboarded: false,
+          holdings,
+          cashBalance,
+          allocation: getAllocation(holdings, cashBalance),
+          profile: initialProfile,
+          timeline: initialTimeline,
+          goal: "Wealth Growth",
+          monthlyContribution: initialMonthlyContribution,
+          healthScore: getHealthScore({
+            profile: initialProfile,
+            timeline: initialTimeline,
+            monthlyContribution: initialMonthlyContribution,
+          }),
+        })
       },
       buyStock: ({ symbol, name, shares, price, change }) => {
         const normalizedSymbol = symbol.trim().toUpperCase()
@@ -349,7 +342,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       },
     }),
     {
-      name: "clarity-portfolio",
+      name: "clarity-portfolio-v2",
       partialize: (state) => ({
         onboarded: state.onboarded,
         profile: state.profile,
