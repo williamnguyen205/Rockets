@@ -5,14 +5,13 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Circle,
   GraduationCap,
 } from "lucide-react"
 import { ClarityChatBlock } from "@/components/ClarityChatBlock"
 import { useClarityTutor } from "@/components/ClarityTutorContext"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 const PROGRESS_STORAGE_KEY = "clarity:learn-progress"
@@ -308,18 +307,6 @@ export function LearnPage() {
     return () => clearLearnContext()
   }, [clearLearnContext])
 
-  function toggleLessonComplete(lessonId: string) {
-    setCompletedLessons((current) => {
-      const next = new Set(current)
-      if (next.has(lessonId)) {
-        next.delete(lessonId)
-      } else {
-        next.add(lessonId)
-      }
-      return next
-    })
-  }
-
   function selectLesson(lessonId: string) {
     setSelectedLessonId(lessonId)
     const lesson = allLessons.find((item) => item.id === lessonId)
@@ -360,39 +347,41 @@ export function LearnPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <Card className="overflow-hidden border-primary/20">
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-7">
+      <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-card via-card to-primary/5">
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-primary">
+              <div className="inline-flex items-center gap-2 rounded-md border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                 <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
                 Beginner investor course
               </div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-normal text-foreground">Build investor fluency one lesson at a time.</h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-                One clear next step, short lessons, and a tutor when you want plain-English help.
+              <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
+                Build investor fluency one lesson at a time.
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Short plain-English lessons, a visible next step, and a tutor that stays tied to what you are learning.
               </p>
             </div>
-            <div className="rounded-md border border-border bg-secondary p-4 sm:min-w-44">
+            <div className="rounded-md border border-border bg-card/90 p-4 shadow-sm sm:min-w-48">
               <p className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">Progress</p>
-              <p className="mt-2 text-4xl font-semibold tracking-normal text-foreground">{progressPercent}%</p>
+              <p className="mt-2 text-3xl font-semibold tracking-normal text-foreground">{progressPercent}%</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {completedCount} of {allLessons.length} lessons
               </p>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${progressPercent}%` }} />
+              </div>
             </div>
           </div>
-          <div className="mt-5 h-3 overflow-hidden rounded-full border border-border bg-muted">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${progressPercent}%` }} />
-          </div>
-          <div className="mt-5 rounded-md border border-primary/25 bg-muted/55 p-4">
-            <p className="text-xs font-semibold uppercase tracking-normal text-primary">Continue learning</p>
-            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-5 rounded-md border border-border bg-card/80 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-foreground">{nextLesson.title}</p>
+                <p className="text-xs font-semibold uppercase tracking-normal text-primary">Continue learning</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{nextLesson.title}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{nextLesson.moduleTitle}</p>
               </div>
-              <Button type="button" onClick={() => selectFlattenedLesson(nextLesson)}>
+              <Button className="sm:self-end" type="button" onClick={() => selectFlattenedLesson(nextLesson)}>
                 Continue
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Button>
@@ -401,40 +390,43 @@ export function LearnPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-8">
-        <div className="min-w-0 flex-1 lg:max-w-[36rem]">
-          <Card>
-            <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <div className="min-w-0">
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-border bg-muted/25 p-5 sm:p-6">
               <div>
                 <CardTitle>Current lesson</CardTitle>
+                <CardDescription className="mt-2">
+                  Learn the idea, see why it matters, then ask a follow-up in plain English.
+                </CardDescription>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge variant="outline">{selectedLesson.moduleTitle}</Badge>
                   {selectedLesson.id === nextLesson.id ? <Badge>Recommended next</Badge> : null}
+                  {completedLessons.has(selectedLesson.id) ? (
+                    <Badge className="gap-1 text-primary" variant="outline">
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      Completed
+                    </Badge>
+                  ) : null}
                 </div>
               </div>
-              <Button type="button" onClick={() => toggleLessonComplete(selectedLesson.id)}>
-                {completedLessons.has(selectedLesson.id) ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    Completed
-                  </>
-                ) : (
-                  <>
-                    <Circle className="h-4 w-4" aria-hidden="true" />
-                    Mark complete
-                  </>
-                )}
-              </Button>
             </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-6 p-5 sm:p-6">
               <div>
-                <h2 className="text-3xl font-semibold tracking-normal text-foreground">{selectedLesson.title}</h2>
-                <p className="mt-4 text-sm leading-7 text-muted-foreground">{selectedLesson.explanation}</p>
+                <p className="text-xs font-semibold uppercase tracking-normal text-primary">
+                  Lesson {selectedLessonIndex + 1} of {allLessons.length}
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-normal text-foreground sm:text-4xl">
+                  {selectedLesson.title}
+                </h2>
+                <p className="mt-4 max-w-3xl text-base leading-8 text-muted-foreground">
+                  {selectedLesson.explanation}
+                </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-md border border-border bg-card p-4">
-                  <p className="text-xs font-semibold uppercase tracking-normal text-primary">Takeaway</p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.takeaway}</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-md border border-border bg-primary/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-normal text-primary">Main idea</p>
+                  <p className="mt-2 text-sm leading-6 text-foreground">{selectedLesson.takeaway}</p>
                 </div>
                 <div className="rounded-md border border-border bg-card p-4">
                   <p className="text-xs font-semibold uppercase tracking-normal text-primary">Example</p>
@@ -442,18 +434,7 @@ export function LearnPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
-                <Button
-                  disabled={!followingLesson}
-                  type="button"
-                  onClick={markCompleteAndGoNext}
-                >
-                  Next lesson
-                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
-
-              <div className="rounded-md border border-border bg-card p-4">
+              <div className="rounded-md border border-border bg-muted/25 p-4">
                 <ClarityChatBlock
                   answer={answer}
                   error={error}
@@ -466,7 +447,7 @@ export function LearnPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:justify-between">
+              <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-between">
                 <Button
                   disabled={!previousLesson}
                   type="button"
@@ -479,7 +460,7 @@ export function LearnPage() {
                 <Button
                   disabled={!followingLesson}
                   type="button"
-                  variant="secondary"
+                  variant="default"
                   onClick={markCompleteAndGoNext}
                 >
                   Next lesson
@@ -491,14 +472,19 @@ export function LearnPage() {
         </div>
 
         <aside
-          className="w-full shrink-0 space-y-3 lg:sticky lg:top-[112px] lg:w-72"
+          className="w-full shrink-0 space-y-3 lg:sticky lg:top-[112px]"
           aria-label="Course outline"
         >
-          <div>
-            <h2 className="text-lg font-semibold tracking-normal text-foreground">Course</h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Expand a module to pick a lesson. The current module opens automatically.
-            </p>
+          <div className="rounded-md border border-border bg-card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold tracking-normal text-foreground">Course</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Pick a module or jump to the next lesson.</p>
+              </div>
+              <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold tabular-nums text-muted-foreground">
+                {completedCount}/{allLessons.length}
+              </span>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -511,11 +497,14 @@ export function LearnPage() {
               return (
                 <div
                   key={module.id}
-                  className="overflow-hidden rounded-md border border-border bg-card"
+                  className={cn(
+                    "overflow-hidden rounded-md border bg-card transition-colors",
+                    expanded ? "border-primary/30" : "border-border",
+                  )}
                 >
                   <button
                     type="button"
-                    className="flex w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-muted/60"
+                    className="flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/60"
                     aria-expanded={expanded}
                     onClick={() => toggleModuleExpanded(module.id)}
                   >
@@ -534,13 +523,13 @@ export function LearnPage() {
                         {module.title}
                       </span>
                     </span>
-                    <span className="shrink-0 pt-0.5 text-[0.65rem] tabular-nums text-muted-foreground">
+                    <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[0.65rem] font-semibold tabular-nums text-muted-foreground">
                       {moduleCompleted}/{module.lessons.length}
                     </span>
                   </button>
 
                   {expanded ? (
-                    <div className="space-y-1 border-t border-border p-2">
+                    <div className="space-y-1 border-t border-border bg-muted/20 p-2">
                       {module.lessons.map((lesson) => {
                         const completed = completedLessons.has(lesson.id)
                         const selected = selectedLesson.id === lesson.id
@@ -550,20 +539,20 @@ export function LearnPage() {
                           <button
                             key={lesson.id}
                             className={cn(
-                              "flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors",
+                              "flex w-full items-center gap-2 rounded-md border px-2.5 py-2.5 text-left transition-colors",
                               selected
-                                ? "border-primary/60 bg-primary/[0.10]"
-                                : "border-transparent bg-muted/40 hover:bg-muted",
-                              recommended && !selected && "border-primary/25 bg-primary/[0.06]",
+                                ? "border-primary/60 bg-primary/10 shadow-sm"
+                                : "border-transparent bg-card hover:bg-muted",
+                              recommended && !selected && "border-primary/25 bg-primary/5",
                             )}
                             type="button"
                             onClick={() => selectLesson(lesson.id)}
                           >
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-background">
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background">
                               {completed ? (
-                                <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                                <CheckCircle2 className="h-4 w-4 text-primary" aria-hidden="true" />
                               ) : (
-                                <BookOpen className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                                <BookOpen className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                               )}
                             </span>
                             <span className="min-w-0 flex-1">
