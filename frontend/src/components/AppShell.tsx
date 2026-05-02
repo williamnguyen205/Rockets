@@ -46,6 +46,7 @@ export function AppShell() {
 
   function handleLogout() {
     setAccountMenuOpen(false)
+    setMobileNavOpen(false)
     endSession()
     navigate("/login", { replace: true })
   }
@@ -79,99 +80,42 @@ export function AppShell() {
 
   return (
     <ClarityTutorProvider>
-      <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="sticky top-0 hidden h-screen border-r border-border bg-card/86 px-4 py-5 backdrop-blur-xl lg:flex lg:flex-col">
-          <Link
-            className="flex items-center gap-3 rounded-md px-2 py-1 text-primary transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
-            to="/dashboard"
-            aria-label="Clarity dashboard"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm">
-              <ClarityIcon className="h-7 w-7" />
-            </span>
-            <span>
-              <span className="block text-lg font-semibold leading-none text-foreground">Clarity</span>
-              <span className="mt-1 block text-xs font-medium text-muted-foreground">Investing workspace</span>
-            </span>
-          </Link>
-
-          <nav className="mt-8 space-y-1" aria-label="Primary navigation">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                    isActive && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-                  )
-                }
-              >
-                <item.icon className="h-4 w-4" aria-hidden="true" />
-                {item.label}
-              </NavLink>
-            ))}
+      <div className="min-h-screen bg-background text-foreground">
+        {mobileNavOpen ? (
+          <div className="fixed inset-0 z-50">
             <button
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Close navigation"
+              className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
               type="button"
-              onClick={() => setGuideOpen(true)}
-            >
-              <GraduationCap className="h-4 w-4" aria-hidden="true" />
-              Getting started
-            </button>
-          </nav>
-
-          <div className="mt-auto rounded-lg border border-border bg-background p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground">
-                CL
+              onClick={() => setMobileNavOpen(false)}
+            />
+            <aside className="relative flex h-full w-[min(22rem,calc(100vw-2rem))] flex-col border-r border-border bg-card px-4 py-5 shadow-panel">
+              <div className="flex items-start justify-between gap-3">
+                <Link
+                  className="flex items-center gap-3 rounded-md px-2 py-1 text-primary transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+                  to="/dashboard"
+                  aria-label="Clarity dashboard"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-background text-primary shadow-sm">
+                    <ClarityIcon className="h-7 w-7" />
+                  </span>
+                  <span>
+                    <span className="block text-lg font-semibold leading-none text-foreground">Clarity</span>
+                    <span className="mt-1 block text-xs font-medium text-muted-foreground">Investing workspace</span>
+                  </span>
+                </Link>
+                <button
+                  aria-label="Close navigation"
+                  className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors hover:bg-muted"
+                  type="button"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">Clarity User</p>
-                <p className="truncate text-xs text-muted-foreground">Demo portfolio</p>
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Link
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                to="/account"
-              >
-                <Settings className="h-3.5 w-3.5" aria-hidden="true" />
-                Settings
-              </Link>
-              <button
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                type="button"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                Logout
-              </button>
-            </div>
-          </div>
-        </aside>
 
-        <div className="min-w-0">
-          <header className="sticky top-0 z-50 border-b border-border bg-background/92 backdrop-blur-xl lg:hidden">
-            <div className="flex h-16 items-center justify-between px-4">
-              <Link className="flex items-center gap-2 text-primary" to="/dashboard" aria-label="Clarity dashboard">
-                <span className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card">
-                  <ClarityIcon className="h-6 w-6" />
-                </span>
-                <span className="text-base font-semibold text-foreground">Clarity</span>
-              </Link>
-              <button
-                aria-expanded={mobileNavOpen}
-                aria-label="Toggle navigation"
-                className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground"
-                type="button"
-                onClick={() => setMobileNavOpen((open) => !open)}
-              >
-                {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
-            </div>
-            {mobileNavOpen ? (
-              <nav className="grid gap-1 border-t border-border bg-card p-3" aria-label="Mobile navigation">
+              <nav className="mt-8 space-y-1" aria-label="Primary navigation">
                 {navItems.map((item) => (
                   <NavLink
                     key={item.to}
@@ -179,8 +123,8 @@ export function AppShell() {
                     onClick={() => setMobileNavOpen(false)}
                     className={({ isActive }) =>
                       cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground",
-                        isActive && "bg-primary text-primary-foreground",
+                        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                        isActive && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
                       )
                     }
                   >
@@ -188,16 +132,8 @@ export function AppShell() {
                     {item.label}
                   </NavLink>
                 ))}
-                <NavLink
-                  to="/account"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
-                >
-                  <Settings className="h-4 w-4" aria-hidden="true" />
-                  Account
-                </NavLink>
                 <button
-                  className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   type="button"
                   onClick={() => {
                     setMobileNavOpen(false)
@@ -207,22 +143,62 @@ export function AppShell() {
                   <GraduationCap className="h-4 w-4" aria-hidden="true" />
                   Getting started
                 </button>
-                <button
-                  className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
-                  type="button"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4" aria-hidden="true" />
-                  Logout
-                </button>
               </nav>
-            ) : null}
-          </header>
 
-          <header className="sticky top-0 z-40 hidden h-16 items-center justify-between border-b border-border bg-background/88 px-8 backdrop-blur-xl lg:flex">
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="mt-auto rounded-lg border border-border bg-background p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-xs font-semibold text-primary-foreground">
+                    CL
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">Clarity User</p>
+                    <p className="truncate text-xs text-muted-foreground">Demo portfolio</p>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Link
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    to="/account"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    <Settings className="h-3.5 w-3.5" aria-hidden="true" />
+                    Settings
+                  </Link>
+                  <button
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    type="button"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        ) : null}
+
+        <div className="min-w-0">
+          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/88 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3 text-sm text-muted-foreground">
+              <button
+                aria-expanded={mobileNavOpen}
+                aria-label="Open navigation"
+                className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+              >
+                <Menu className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <Link className="flex items-center gap-2 text-primary" to="/dashboard" aria-label="Clarity dashboard">
+                <span className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card">
+                  <ClarityIcon className="h-5 w-5" />
+                </span>
+                <span className="hidden text-sm font-semibold text-foreground sm:inline">Clarity</span>
+              </Link>
+              <span className="hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
               <BarChart3 className="h-4 w-4 text-accent" aria-hidden="true" />
-              Practice portfolio
+              <span className="truncate">Practice portfolio</span>
             </div>
 
             <div ref={accountMenuRef} className="relative">

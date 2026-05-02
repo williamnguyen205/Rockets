@@ -106,22 +106,28 @@ function PlanMetricDropdown({
         aria-expanded={open}
         aria-haspopup="listbox"
         className={cn(
-          "flex w-full min-w-0 items-center justify-center gap-1 rounded-full border border-border/70 bg-muted/55 px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35",
-          open && "border-primary/50 bg-muted",
+          "flex min-h-[4.25rem] w-full min-w-0 items-center justify-between gap-3 rounded-md border border-border/70 bg-muted/45 px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35",
+          open && "border-primary/50 bg-muted shadow-sm",
         )}
         type="button"
         onClick={() => onOpenChange(!open)}
       >
-        <span className="sr-only">{triggerLabel}: </span>
-        <span className="truncate">{triggerText}</span>
+        <span className="min-w-0">
+          <span className="block text-[0.65rem] font-semibold uppercase tracking-normal text-muted-foreground">
+            {triggerLabel}
+          </span>
+          <span className="mt-1 block text-sm font-semibold leading-snug text-foreground">
+            {triggerText}
+          </span>
+        </span>
         <ChevronDown
-          className={cn("h-3.5 w-3.5 shrink-0 opacity-70 transition-transform", open && "rotate-180")}
+          className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
           aria-hidden="true"
         />
       </button>
       {open ? (
         <div
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-[200] max-h-[min(24rem,calc(100vh-8rem))] min-w-[10.5rem] overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-lg outline-none ring-1 ring-border/60 sm:left-1/2 sm:right-auto sm:min-w-[14rem] sm:-translate-x-1/2"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-[200] max-h-[min(24rem,calc(100vh-8rem))] min-w-[14rem] overflow-y-auto rounded-md border border-border bg-card py-1 shadow-lg outline-none ring-1 ring-border/60"
           role={menuRole === "none" ? undefined : menuRole}
         >
           {children}
@@ -605,151 +611,151 @@ export function DashboardPage() {
               <Badge variant="outline">{formatCurrency(monthlyContribution)}/mo</Badge>
             </div>
             <HealthRing score={healthScore} />
-            <div className="mt-4 grid grid-cols-2 gap-3 overflow-visible sm:grid-cols-4">
-            <PlanMetricDropdown
-              open={openMetric === "profile"}
-              triggerLabel="Investor profile"
-              triggerText={profile}
-              onOpenChange={(next) => setOpenMetric(next ? "profile" : null)}
-            >
-              {PROFILE_CHOICES.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={cn(
-                    "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
-                    opt.value === profile && "bg-primary/10 font-semibold text-primary",
-                  )}
-                  role="option"
-                  type="button"
-                  onClick={() => {
-                    updateProfileSettings({ profile: opt.value })
-                    setOpenMetric(null)
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </PlanMetricDropdown>
-            <PlanMetricDropdown
-              open={openMetric === "timeline"}
-              triggerLabel="Investment timeline"
-              triggerText={TIMELINE_CHOICES.find((t) => t.value === timeline)?.label ?? timeline}
-              onOpenChange={(next) => setOpenMetric(next ? "timeline" : null)}
-            >
-              {TIMELINE_CHOICES.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={cn(
-                    "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
-                    opt.value === timeline && "bg-primary/10 font-semibold text-primary",
-                  )}
-                  role="option"
-                  type="button"
-                  onClick={() => {
-                    updateProfileSettings({ timeline: opt.value })
-                    setOpenMetric(null)
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </PlanMetricDropdown>
-            <PlanMetricDropdown
-              open={openMetric === "goal"}
-              triggerLabel="Goal"
-              triggerText={goalChipLabel(goal)}
-              onOpenChange={(next) => setOpenMetric(next ? "goal" : null)}
-            >
-              {GOAL_CHOICES.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={cn(
-                    "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
-                    opt.value === goal && "bg-primary/10 font-semibold text-primary",
-                  )}
-                  role="option"
-                  type="button"
-                  onClick={() => {
-                    updateProfileSettings({ goal: opt.value })
-                    setOpenMetric(null)
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </PlanMetricDropdown>
-            <PlanMetricDropdown
-              menuRole="none"
-              open={openMetric === "monthly"}
-              triggerLabel="Monthly contribution"
-              triggerText={`${formatCurrency(monthlyContribution)}/mo`}
-              onOpenChange={(next) => {
-                if (next) {
-                  setMonthlyInputDraft(
-                    monthlyContribution > 0 ? String(monthlyContribution) : "",
-                  )
-                }
-                setOpenMetric(next ? "monthly" : null)
-              }}
-            >
-              <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Quick amounts
-              </p>
-              {monthlyOptions.map((amount) => (
-                <button
-                  key={amount}
-                  className={cn(
-                    "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
-                    amount === monthlyContribution && "bg-primary/10 font-semibold text-primary",
-                  )}
-                  type="button"
-                  onClick={() => {
-                    updateProfileSettings({ monthlyContribution: amount })
-                    setOpenMetric(null)
-                  }}
-                >
-                  {formatCurrency(amount)}/mo
-                </button>
-              ))}
-              <div className="mx-2 my-2 border-t border-border" />
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Custom amount
-              </p>
-              <div className="px-3 pb-2">
-                <label className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 px-2 focus-within:ring-2 focus-within:ring-ring/30">
-                  <span className="pl-1 text-xs font-semibold text-muted-foreground">$</span>
-                  <input
-                    className="min-w-0 flex-1 bg-transparent py-2 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
-                    inputMode="decimal"
-                    placeholder="0"
-                    type="text"
-                    autoComplete="off"
-                    value={monthlyInputDraft}
-                    onChange={(event) => {
-                      let next = event.target.value.replace(/[^\d.]/g, "")
-                      const dot = next.indexOf(".")
-                      if (dot !== -1) {
-                        next = `${next.slice(0, dot + 1)}${next.slice(dot + 1).replace(/\./g, "")}`
-                      }
-                      setMonthlyInputDraft(next)
+            <div className="mt-4 grid grid-cols-1 gap-3 overflow-visible sm:grid-cols-2">
+              <PlanMetricDropdown
+                open={openMetric === "profile"}
+                triggerLabel="Profile"
+                triggerText={profile}
+                onOpenChange={(next) => setOpenMetric(next ? "profile" : null)}
+              >
+                {PROFILE_CHOICES.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={cn(
+                      "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                      opt.value === profile && "bg-primary/10 font-semibold text-primary",
+                    )}
+                    role="option"
+                    type="button"
+                    onClick={() => {
+                      updateProfileSettings({ profile: opt.value })
+                      setOpenMetric(null)
                     }}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Enter") return
-                      event.preventDefault()
-                      commitMonthlyFromDraft()
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </PlanMetricDropdown>
+              <PlanMetricDropdown
+                open={openMetric === "timeline"}
+                triggerLabel="Timeline"
+                triggerText={TIMELINE_CHOICES.find((t) => t.value === timeline)?.label ?? timeline}
+                onOpenChange={(next) => setOpenMetric(next ? "timeline" : null)}
+              >
+                {TIMELINE_CHOICES.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={cn(
+                      "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                      opt.value === timeline && "bg-primary/10 font-semibold text-primary",
+                    )}
+                    role="option"
+                    type="button"
+                    onClick={() => {
+                      updateProfileSettings({ timeline: opt.value })
+                      setOpenMetric(null)
                     }}
-                  />
-                  <span className="pr-1 text-xs font-semibold text-muted-foreground">/mo</span>
-                </label>
-                <button
-                  className="mt-2 w-full rounded-lg bg-primary py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                  type="button"
-                  onClick={commitMonthlyFromDraft}
-                >
-                  Apply
-                </button>
-              </div>
-            </PlanMetricDropdown>
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </PlanMetricDropdown>
+              <PlanMetricDropdown
+                open={openMetric === "goal"}
+                triggerLabel="Goal"
+                triggerText={goalChipLabel(goal)}
+                onOpenChange={(next) => setOpenMetric(next ? "goal" : null)}
+              >
+                {GOAL_CHOICES.map((opt) => (
+                  <button
+                    key={opt.value}
+                    className={cn(
+                      "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                      opt.value === goal && "bg-primary/10 font-semibold text-primary",
+                    )}
+                    role="option"
+                    type="button"
+                    onClick={() => {
+                      updateProfileSettings({ goal: opt.value })
+                      setOpenMetric(null)
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </PlanMetricDropdown>
+              <PlanMetricDropdown
+                menuRole="none"
+                open={openMetric === "monthly"}
+                triggerLabel="Monthly"
+                triggerText={`${formatCurrency(monthlyContribution)}/mo`}
+                onOpenChange={(next) => {
+                  if (next) {
+                    setMonthlyInputDraft(
+                      monthlyContribution > 0 ? String(monthlyContribution) : "",
+                    )
+                  }
+                  setOpenMetric(next ? "monthly" : null)
+                }}
+              >
+                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Quick amounts
+                </p>
+                {monthlyOptions.map((amount) => (
+                  <button
+                    key={amount}
+                    className={cn(
+                      "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                      amount === monthlyContribution && "bg-primary/10 font-semibold text-primary",
+                    )}
+                    type="button"
+                    onClick={() => {
+                      updateProfileSettings({ monthlyContribution: amount })
+                      setOpenMetric(null)
+                    }}
+                  >
+                    {formatCurrency(amount)}/mo
+                  </button>
+                ))}
+                <div className="mx-2 my-2 border-t border-border" />
+                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Custom amount
+                </p>
+                <div className="px-3 pb-2">
+                  <label className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 px-2 focus-within:ring-2 focus-within:ring-ring/30">
+                    <span className="pl-1 text-xs font-semibold text-muted-foreground">$</span>
+                    <input
+                      className="min-w-0 flex-1 bg-transparent py-2 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
+                      inputMode="decimal"
+                      placeholder="0"
+                      type="text"
+                      autoComplete="off"
+                      value={monthlyInputDraft}
+                      onChange={(event) => {
+                        let next = event.target.value.replace(/[^\d.]/g, "")
+                        const dot = next.indexOf(".")
+                        if (dot !== -1) {
+                          next = `${next.slice(0, dot + 1)}${next.slice(dot + 1).replace(/\./g, "")}`
+                        }
+                        setMonthlyInputDraft(next)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Enter") return
+                        event.preventDefault()
+                        commitMonthlyFromDraft()
+                      }}
+                    />
+                    <span className="pr-1 text-xs font-semibold text-muted-foreground">/mo</span>
+                  </label>
+                  <button
+                    className="mt-2 w-full rounded-lg bg-primary py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    type="button"
+                    onClick={commitMonthlyFromDraft}
+                  >
+                    Apply
+                  </button>
+                </div>
+              </PlanMetricDropdown>
           </div>
         </CardContent>
       </Card>
