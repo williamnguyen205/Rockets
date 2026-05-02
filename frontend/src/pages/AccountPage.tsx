@@ -15,18 +15,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ClarityIcon } from "@/components/ClarityLogo"
 import { cn } from "@/lib/utils"
-import {
-  type InvestmentTimeline,
-  type InvestorProfile,
-  usePortfolioStore,
-} from "@/store/portfolio"
 
 type AccountForm = {
   fullName: string
   email: string
-  investorType: InvestorProfile
-  timeline: InvestmentTimeline
-  monthlyContribution: string
 }
 
 const preferenceDefaults = {
@@ -73,18 +65,6 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   )
 }
 
-function SelectInput(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...props}
-      className={cn(
-        "h-11 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30",
-        props.className,
-      )}
-    />
-  )
-}
-
 function Toggle({
   checked,
   label,
@@ -124,13 +104,9 @@ function Toggle({
 }
 
 export function AccountPage() {
-  const { profile, timeline, monthlyContribution, updateProfileSettings } = usePortfolioStore()
   const initialForm: AccountForm = {
     fullName: "Clarity User",
     email: "clarity@example.com",
-    investorType: profile,
-    timeline,
-    monthlyContribution: String(monthlyContribution),
   }
   const [form, setForm] = useState<AccountForm>(initialForm)
   const [savedForm, setSavedForm] = useState<AccountForm>(initialForm)
@@ -160,11 +136,6 @@ export function AccountPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    updateProfileSettings({
-      profile: form.investorType,
-      timeline: form.timeline,
-      monthlyContribution: Number(form.monthlyContribution) || 0,
-    })
     setSavedForm(form)
     setSaved(true)
   }
@@ -210,7 +181,10 @@ export function AccountPage() {
               <UserRound className="h-5 w-5 text-primary" aria-hidden="true" />
               Profile
             </CardTitle>
-            <CardDescription>These details personalize recommendations throughout Clarity.</CardDescription>
+            <CardDescription>
+              Name and email for your account. Investor profile, timeline, and monthly contribution live on the
+              Scenarios tab where they drive your models.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name">
@@ -224,35 +198,6 @@ export function AccountPage() {
                 type="email"
                 value={form.email}
                 onChange={(event) => updateForm("email", event.target.value)}
-              />
-            </Field>
-            <Field label="Investor profile">
-              <SelectInput
-                value={form.investorType}
-                onChange={(event) => updateForm("investorType", event.target.value)}
-              >
-                <option>Conservative</option>
-                <option>Balanced</option>
-                <option>Growth</option>
-                <option>Aggressive</option>
-              </SelectInput>
-            </Field>
-            <Field label="Timeline">
-              <SelectInput
-                value={form.timeline}
-                onChange={(event) => updateForm("timeline", event.target.value)}
-              >
-                <option>1-3 years</option>
-                <option>3-5 years</option>
-                <option>5-10 years</option>
-                <option>10+ years</option>
-              </SelectInput>
-            </Field>
-            <Field label="Monthly contribution">
-              <TextInput
-                inputMode="numeric"
-                value={form.monthlyContribution}
-                onChange={(event) => updateForm("monthlyContribution", event.target.value)}
               />
             </Field>
           </CardContent>
@@ -377,9 +322,9 @@ export function AccountPage() {
                   Settings saved locally
                 </span>
               ) : hasChanges ? (
-                "You have unsaved profile changes."
+                "You have unsaved account details."
               ) : (
-                "No unsaved profile changes."
+                "No unsaved account details."
               )}
             </p>
             <div className="flex gap-2">

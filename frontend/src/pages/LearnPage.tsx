@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react"
 import {
   BookOpen,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Circle,
@@ -263,6 +264,9 @@ export function LearnPage() {
   const [loading, setLoading] = useState(false)
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => readSavedProgress())
   const [selectedLessonId, setSelectedLessonId] = useState(allLessons[0].id)
+  const [expandedModuleIds, setExpandedModuleIds] = useState<Set<string>>(
+    () => new Set([allLessons[0].moduleId]),
+  )
 
   const nextLesson = useMemo(
     () => allLessons.find((lesson) => !completedLessons.has(lesson.id)) ?? allLessons[0],
@@ -287,6 +291,14 @@ export function LearnPage() {
       JSON.stringify(Array.from(completedLessons)),
     )
   }, [completedLessons])
+
+  useEffect(() => {
+    setExpandedModuleIds((current) => {
+      const next = new Set(current)
+      next.add(selectedLesson.moduleId)
+      return next
+    })
+  }, [selectedLesson.moduleId])
 
   async function handleAskClarity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -338,6 +350,29 @@ export function LearnPage() {
   function selectFlattenedLesson(lesson: typeof allLessons[number] | null) {
     if (!lesson) return
     selectLesson(lesson.id)
+  }
+
+  function markCompleteAndGoNext() {
+    if (!followingLesson) return
+
+    setCompletedLessons((current) => {
+      const next = new Set(current)
+      next.add(selectedLesson.id)
+      return next
+    })
+    setSelectedLessonId(followingLesson.id)
+  }
+
+  function toggleModuleExpanded(moduleId: string) {
+    setExpandedModuleIds((current) => {
+      const next = new Set(current)
+      if (next.has(moduleId)) {
+        next.delete(moduleId)
+      } else {
+        next.add(moduleId)
+      }
+      return next
+    })
   }
 
   return (
