@@ -1,10 +1,11 @@
-import { useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useState, type FormEvent } from "react"
 import {
   Bell,
   Check,
   CreditCard,
   Lock,
   Mail,
+  Moon,
   Shield,
   SlidersHorizontal,
   UserRound,
@@ -14,21 +15,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ClarityIcon } from "@/components/ClarityLogo"
 import { cn } from "@/lib/utils"
+import {
+  type InvestmentTimeline,
+  type InvestorProfile,
+  usePortfolioStore,
+} from "@/store/portfolio"
 
 type AccountForm = {
   fullName: string
   email: string
-  investorType: string
-  timeline: string
+  investorType: InvestorProfile
+  timeline: InvestmentTimeline
   monthlyContribution: string
-}
-
-const initialForm: AccountForm = {
-  fullName: "Clarity User",
-  email: "clarity@example.com",
-  investorType: "Conservative",
-  timeline: "5-10 years",
-  monthlyContribution: "650",
 }
 
 const preferenceDefaults = {
@@ -36,6 +34,16 @@ const preferenceDefaults = {
   weeklyDigest: true,
   riskWarnings: true,
   marketing: false,
+}
+
+function getInitialTheme() {
+  if (typeof window === "undefined") return false
+
+  const savedTheme = window.localStorage.getItem("clarity-theme")
+  if (savedTheme === "dark") return true
+  if (savedTheme === "light") return false
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
 }
 
 function Field({
@@ -58,7 +66,7 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "h-11 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30",
+        "h-11 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30",
         props.className,
       )}
     />
@@ -70,7 +78,7 @@ function SelectInput(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       {...props}
       className={cn(
-        "h-11 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30",
+        "h-11 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30",
         props.className,
       )}
     />
@@ -90,7 +98,7 @@ function Toggle({
 }) {
   return (
     <button
-      className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-white p-4 text-left transition-colors hover:bg-muted"
+      className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted"
       type="button"
       onClick={onChange}
     >
@@ -106,7 +114,7 @@ function Toggle({
       >
         <span
           className={cn(
-            "absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white transition-transform",
+            "absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-card transition-transform",
             checked ? "translate-x-5" : "translate-x-1",
           )}
         />
@@ -116,9 +124,18 @@ function Toggle({
 }
 
 export function AccountPage() {
+  const { profile, timeline, monthlyContribution, updateProfileSettings } = usePortfolioStore()
+  const initialForm: AccountForm = {
+    fullName: "Clarity User",
+    email: "clarity@example.com",
+    investorType: profile,
+    timeline,
+    monthlyContribution: String(monthlyContribution),
+  }
   const [form, setForm] = useState<AccountForm>(initialForm)
   const [savedForm, setSavedForm] = useState<AccountForm>(initialForm)
   const [preferences, setPreferences] = useState(preferenceDefaults)
+  const [darkMode, setDarkMode] = useState(getInitialTheme)
   const [saved, setSaved] = useState(false)
 
   const hasChanges = useMemo(
@@ -126,8 +143,13 @@ export function AccountPage() {
     [form, savedForm],
   )
 
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode)
+    window.localStorage.setItem("clarity-theme", darkMode ? "dark" : "light")
+  }, [darkMode])
+
   function updateForm(field: keyof AccountForm, value: string) {
-    setForm((current) => ({ ...current, [field]: value }))
+    setForm((current) => ({ ...current, [field]: value }) as AccountForm)
     setSaved(false)
   }
 
@@ -138,6 +160,11 @@ export function AccountPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    updateProfileSettings({
+      profile: form.investorType,
+      timeline: form.timeline,
+      monthlyContribution: Number(form.monthlyContribution) || 0,
+    })
     setSavedForm(form)
     setSaved(true)
   }
@@ -150,7 +177,7 @@ export function AccountPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-primary">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-primary">
           <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
           Account settings
         </div>
@@ -162,7 +189,7 @@ export function AccountPage() {
 
       <Card>
         <CardContent className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border bg-white shadow-sm">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-border bg-card shadow-sm">
             <ClarityIcon className="h-11 w-11" />
           </div>
           <div className="flex-1">
@@ -228,6 +255,24 @@ export function AccountPage() {
                 onChange={(event) => updateForm("monthlyContribution", event.target.value)}
               />
             </Field>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Moon className="h-5 w-5 text-primary" aria-hidden="true" />
+              Appearance
+            </CardTitle>
+            <CardDescription>Choose how Clarity looks on this device.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Toggle
+              checked={darkMode}
+              description="Use a darker interface for lower-light environments."
+              label="Dark mode"
+              onChange={() => setDarkMode((current) => !current)}
+            />
           </CardContent>
         </Card>
 
@@ -304,7 +349,7 @@ export function AccountPage() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="flex items-center justify-between gap-4 rounded-xl border border-border bg-white p-4"
+                className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted/55 text-primary">

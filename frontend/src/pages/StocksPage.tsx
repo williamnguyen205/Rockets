@@ -206,7 +206,7 @@ export function StocksPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-primary">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-primary">
           <Search className="h-3.5 w-3.5" aria-hidden="true" />
           Live stock lookup
         </div>
@@ -222,7 +222,7 @@ export function StocksPage() {
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
-                className="h-12 w-full rounded-xl border border-border bg-white pl-10 pr-4 text-sm font-semibold uppercase text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30"
+                className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm font-semibold uppercase text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/30"
                 placeholder="AAPL"
                 value={tickerInput}
                 onChange={(event) => setTickerInput(event.target.value)}
@@ -242,7 +242,7 @@ export function StocksPage() {
                   "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
                   item === ticker
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-white text-muted-foreground hover:text-foreground",
+                    : "border-border bg-card text-muted-foreground hover:text-foreground",
                 )}
                 type="button"
                 onClick={() => selectTicker(item)}
@@ -297,19 +297,19 @@ export function StocksPage() {
               </div>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-border bg-white p-4">
+                <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-xs font-medium text-muted-foreground">Market cap</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{formatCompact(quote.marketCap)}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-white p-4">
+                <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-xs font-medium text-muted-foreground">Volume</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{formatCompact(quote.volume)}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-white p-4">
+                <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-xs font-medium text-muted-foreground">Previous close</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{formatCurrency(quote.previousClose)}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-white p-4">
+                <div className="rounded-xl border border-border bg-card p-4">
                   <p className="text-xs font-medium text-muted-foreground">Day range</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">
                     {formatCurrency(quote.dayLow)} - {formatCurrency(quote.dayHigh)}
@@ -318,7 +318,7 @@ export function StocksPage() {
               </div>
 
               <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,380px)]">
-                <div className="rounded-xl border border-border bg-white p-4">
+                <div className="rounded-xl border border-border bg-card p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-primary" aria-hidden="true" />
                     <p className="text-sm font-semibold text-foreground">Portfolio position</p>
@@ -345,7 +345,7 @@ export function StocksPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-white p-4">
+                <div className="rounded-xl border border-border bg-card p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <CircleDollarSign className="h-4 w-4 text-primary" aria-hidden="true" />
                     <p className="text-sm font-semibold text-foreground">Trade</p>
@@ -354,7 +354,7 @@ export function StocksPage() {
                     <label className="flex-1">
                       <span className="mb-1 block text-xs font-medium text-muted-foreground">Shares</span>
                       <input
-                        className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
+                        className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-ring/30"
                         min="0.01"
                         step="0.01"
                         type="number"
@@ -485,7 +485,7 @@ export function StocksPage() {
               </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-white">
+              <div className="rounded-xl border border-border bg-card">
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-primary" aria-hidden="true" />

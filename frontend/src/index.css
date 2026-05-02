@@ -27,6 +27,29 @@
     --radius: 1.25rem;
   }
 
+  .dark {
+    color-scheme: dark;
+    --background: 224 35% 8%;
+    --foreground: 38 50% 92%;
+    --card: 224 28% 13%;
+    --card-foreground: 38 50% 92%;
+    --popover: 224 28% 13%;
+    --popover-foreground: 38 50% 92%;
+    --primary: 38 50% 92%;
+    --primary-foreground: 224 35% 8%;
+    --secondary: 99 38% 36%;
+    --secondary-foreground: 38 50% 92%;
+    --muted: 224 22% 18%;
+    --muted-foreground: 219 18% 66%;
+    --accent: 199 72% 55%;
+    --accent-foreground: 224 35% 8%;
+    --destructive: 352 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 221 20% 32%;
+    --input: 221 20% 32%;
+    --ring: 99 42% 48%;
+  }
+
   * {
     @apply border-border;
   }
@@ -50,8 +73,8 @@
     z-index: -1;
     content: "";
     background:
-      linear-gradient(90deg, rgba(8, 13, 33, 0.045) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(8, 13, 33, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.045) 1px, transparent 1px),
+      linear-gradient(180deg, hsl(var(--foreground) / 0.045) 1px, transparent 1px),
       hsl(var(--background));
     background-size: 42px 42px, 42px 42px, auto;
     mask-image: linear-gradient(to bottom, black 0%, black 48%, transparent 100%);

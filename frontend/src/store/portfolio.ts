@@ -2,6 +2,8 @@ import { create } from "zustand"
 
 export type RiskLevel = "Low" | "Medium" | "High"
 export type HoldingCategory = "stock" | "fund"
+export type InvestorProfile = "Conservative" | "Balanced" | "Growth" | "Aggressive"
+export type InvestmentTimeline = "1-3 years" | "3-5 years" | "5-10 years" | "10+ years"
 
 export type Holding = {
   symbol: string
@@ -23,12 +25,18 @@ type AllocationItem = { name: string; value: number; color: string }
 
 type PortfolioState = {
   healthScore: number
-  profile: string
-  timeline: string
+  profile: InvestorProfile
+  timeline: InvestmentTimeline
   goal: string
+  monthlyContribution: number
   cashBalance: number
   allocation: AllocationItem[]
   holdings: Holding[]
+  updateProfileSettings: (settings: {
+    profile: InvestorProfile
+    timeline: InvestmentTimeline
+    monthlyContribution: number
+  }) => void
   buyStock: (trade: {
     symbol: string
     name: string
@@ -45,6 +53,39 @@ type PortfolioState = {
 
 function getHoldingValue(holding: Holding) {
   return holding.shares * holding.lastPrice
+}
+
+function getPortfolioValue(holdings: Holding[], cashBalance: number) {
+  return holdings.reduce((total, holding) => total + getHoldingValue(holding), cashBalance)
+}
+
+function getHealthScore({
+  profile,
+  timeline,
+  monthlyContribution,
+}: {
+  profile: InvestorProfile
+  timeline: InvestmentTimeline
+  monthlyContribution: number
+}) {
+  const profileScore: Record<InvestorProfile, number> = {
+    Conservative: 76,
+    Balanced: 80,
+    Growth: 74,
+    Aggressive: 66,
+  }
+  const timelineAdjustment: Record<InvestmentTimeline, number> = {
+    "1-3 years": -8,
+    "3-5 years": -2,
+    "5-10 years": 4,
+    "10+ years": 7,
+  }
+  const contributionAdjustment = Math.min(Math.floor(monthlyContribution / 250), 8)
+
+  return Math.max(
+    35,
+    Math.min(95, profileScore[profile] + timelineAdjustment[timeline] + contributionAdjustment),
+  )
 }
 
 function getAllocation(holdings: Holding[], cashBalance: number): AllocationItem[] {
@@ -115,15 +156,37 @@ const initialHoldings: Holding[] = [
 ]
 
 const initialCashBalance = 2500
+const initialProfile: InvestorProfile = "Conservative"
+const initialTimeline: InvestmentTimeline = "5-10 years"
+const initialMonthlyContribution = 650
 
 export const usePortfolioStore = create<PortfolioState>((set, get) => ({
-  healthScore: 74,
-  profile: "Conservative",
-  timeline: "5-10 years",
+  healthScore: getHealthScore({
+    profile: initialProfile,
+    timeline: initialTimeline,
+    monthlyContribution: initialMonthlyContribution,
+  }),
+  profile: initialProfile,
+  timeline: initialTimeline,
   goal: "Wealth Growth",
+  monthlyContribution: initialMonthlyContribution,
   cashBalance: initialCashBalance,
   allocation: getAllocation(initialHoldings, initialCashBalance),
   holdings: initialHoldings,
+  updateProfileSettings: ({ profile, timeline, monthlyContribution }) => {
+    const normalizedContribution = Math.max(0, monthlyContribution)
+
+    set({
+      profile,
+      timeline,
+      monthlyContribution: normalizedContribution,
+      healthScore: getHealthScore({
+        profile,
+        timeline,
+        monthlyContribution: normalizedContribution,
+      }),
+    })
+  },
   buyStock: ({ symbol, name, shares, price, change }) => {
     const normalizedSymbol = symbol.trim().toUpperCase()
     const tradeValue = shares * price
@@ -223,4 +286,4 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
   },
 }))
 
-export { getHoldingValue }
+export { getAllocation, getHoldingValue, getPortfolioValue }

@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 import { LogOut } from "lucide-react"
 import { ClarityIcon } from "@/components/ClarityLogo"
@@ -10,23 +11,37 @@ const navItems = [
   { to: "/learn", label: "Learn" },
 ]
 
+function shouldUseDarkTheme() {
+  if (typeof window === "undefined") return false
+
+  const savedTheme = window.localStorage.getItem("clarity-theme")
+  if (savedTheme === "dark") return true
+  if (savedTheme === "light") return false
+
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+}
+
 export function AppShell() {
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", shouldUseDarkTheme())
+  }, [])
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="fixed inset-x-0 top-0 z-50 h-[72px] border-b border-border/80 bg-background/95 backdrop-blur-xl">
         <nav className="mx-auto grid h-full max-w-[980px] grid-cols-[1fr_auto_1fr] items-center px-5">
           <Link
-            className="inline-flex items-center gap-3 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/35"
+            className="inline-flex items-center gap-3 text-primary transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/35"
             to="/dashboard"
             aria-label="Clarity dashboard"
           >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-white text-primary shadow-sm">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-card text-primary shadow-sm">
               <ClarityIcon className="h-8 w-8" />
             </span>
             <span className="text-xl font-bold tracking-normal text-primary">Clarity</span>
           </Link>
 
-          <div className="flex items-center gap-1 rounded-full border border-border/80 bg-white p-1 shadow-sm">
+          <div className="flex items-center gap-1 rounded-full border border-border/80 bg-card p-1 shadow-sm">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
@@ -48,7 +63,7 @@ export function AppShell() {
               aria-label="Account settings"
               className={({ isActive }) =>
                 cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-white text-xs font-semibold text-primary shadow-sm transition-colors hover:bg-secondary/40",
+                  "flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-xs font-semibold text-primary shadow-sm transition-colors hover:bg-secondary/40",
                   isActive && "border-primary bg-secondary/60",
                 )
               }
@@ -57,7 +72,7 @@ export function AppShell() {
               CL
             </NavLink>
             <Link
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-border/80 bg-white px-4 text-sm font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/35"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-border/80 bg-card px-4 text-sm font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/35"
               to="/"
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />

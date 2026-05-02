@@ -13,20 +13,20 @@ function ChartMark({ className }: { className?: string }) {
       className={cn("h-full w-full", className)}
       viewBox="0 0 96 96"
     >
-      <circle cx="43" cy="44" r="31" fill="none" stroke="#0a1329" strokeWidth="9" />
+      <circle cx="43" cy="44" r="31" fill="none" stroke="currentColor" strokeWidth="9" />
       <path
         d="M17 70L37 50L48 60L77 31"
         fill="none"
-        stroke="#0a1329"
+        stroke="currentColor"
         strokeLinecap="butt"
         strokeLinejoin="miter"
         strokeWidth="9"
       />
-      <path d="M69 23L90 14L82 36Z" fill="#0a1329" />
+      <path d="M69 23L90 14L82 36Z" fill="currentColor" />
       <path
         d="M63 63L82 82"
         fill="none"
-        stroke="#0a1329"
+        stroke="currentColor"
         strokeLinecap="butt"
         strokeWidth="9"
       />
@@ -54,7 +54,7 @@ export function ClarityLogo({ className, showTagline = false, compact = false }:
         <ClarityIcon className={compact ? "h-9 w-9" : "h-14 w-14"} />
         <span
           className={cn(
-            "font-extrabold leading-none tracking-[0.03em] text-[#0a1329]",
+            "font-extrabold leading-none tracking-[0.03em] text-current",
             compact ? "text-2xl" : "text-5xl",
           )}
         >

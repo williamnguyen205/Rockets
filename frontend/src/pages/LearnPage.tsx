@@ -346,7 +346,7 @@ export function LearnPage() {
         <CardContent className="p-6">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-primary">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-primary">
                 <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
                 Beginner investor course
               </div>
@@ -411,17 +411,17 @@ export function LearnPage() {
             <p className="mt-4 text-sm leading-7 text-muted-foreground">{selectedLesson.explanation}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-border bg-white p-4">
+            <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-xs font-semibold uppercase tracking-normal text-primary">Takeaway</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.takeaway}</p>
             </div>
-            <div className="rounded-xl border border-border bg-white p-4">
+            <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-xs font-semibold uppercase tracking-normal text-primary">Example</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.example}</p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-white p-4">
+          <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
               <h3 className="font-semibold text-foreground">Ask Clarity about this lesson</h3>
@@ -460,7 +460,7 @@ export function LearnPage() {
                 ].map(([label, copy]) => (
                   <div
                     key={label}
-                    className="rounded-xl border border-border bg-white p-4"
+                    className="rounded-xl border border-border bg-card p-4"
                   >
                     <p className="text-xs font-semibold uppercase tracking-normal text-primary">{label}</p>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy}</p>
@@ -533,7 +533,7 @@ export function LearnPage() {
                             "flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
                             selected
                               ? "border-primary/60 bg-primary/[0.10]"
-                              : "border-border bg-white hover:bg-muted",
+                              : "border-border bg-card hover:bg-muted",
                             recommended && !selected && "border-primary/30 bg-primary/[0.06]",
                           )}
                           type="button"

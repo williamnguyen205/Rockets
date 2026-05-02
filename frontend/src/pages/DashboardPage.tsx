@@ -10,7 +10,12 @@ import { ArrowDownRight, ArrowUpRight, ShieldCheck, Sparkles } from "lucide-reac
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { getHoldingValue, type RiskLevel, usePortfolioStore } from "@/store/portfolio"
+import {
+  getHoldingValue,
+  type InvestorProfile,
+  type RiskLevel,
+  usePortfolioStore,
+} from "@/store/portfolio"
 
 const riskVariant: Record<RiskLevel, "low" | "medium" | "high"> = {
   Low: "low",
@@ -85,8 +90,19 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
+const nextMoveByProfile: Record<InvestorProfile, string> = {
+  Conservative:
+    "Prioritize steady contributions and keep enough cash for near-term needs before adding more stock exposure.",
+  Balanced:
+    "Maintain regular contributions while keeping stocks and funds close to your target allocation.",
+  Growth:
+    "Your longer-term plan can support more growth exposure, but keep contributions consistent through volatility.",
+  Aggressive:
+    "Watch concentration risk closely and rebalance when fast-moving positions start dominating the portfolio.",
+}
+
 export function DashboardPage() {
-  const { healthScore, profile, timeline, goal, allocation, holdings, cashBalance } =
+  const { healthScore, profile, timeline, goal, monthlyContribution, allocation, holdings, cashBalance } =
     usePortfolioStore()
 
   return (
@@ -104,8 +120,8 @@ export function DashboardPage() {
       <Card className="overflow-hidden">
         <CardContent className="p-8">
           <HealthRing score={healthScore} />
-          <div className="mt-7 grid grid-cols-3 gap-3">
-            {[profile, timeline, goal].map((chip) => (
+          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[profile, timeline, goal, `${formatCurrency(monthlyContribution)}/mo`].map((chip) => (
               <div
                 key={chip}
                 className="rounded-full border border-border/70 bg-muted/55 px-3 py-2 text-center text-xs font-medium text-muted-foreground"
@@ -188,7 +204,7 @@ export function DashboardPage() {
                 className="grid grid-cols-[auto_1fr] gap-4 rounded-lg border border-border/70 bg-muted/55 p-4 transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:grid-cols-[76px_1fr_96px_104px_86px_auto] sm:items-center"
                 to={`/stocks?ticker=${encodeURIComponent(holding.symbol)}`}
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-white text-xs font-semibold text-foreground sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-md border border-border bg-card text-xs font-semibold text-foreground sm:h-auto sm:w-auto sm:border-0 sm:bg-transparent sm:text-sm">
                   {holding.symbol}
                 </div>
                 <div>
@@ -240,13 +256,13 @@ export function DashboardPage() {
 
       <Card className="border-primary/20 bg-secondary/70">
         <CardContent className="flex items-start gap-4 p-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary bg-white text-primary">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary bg-card text-primary">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">Suggested next move</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Keep cash near 15% while gradually adding to diversified mutual funds. Your portfolio is healthy, but a little more broad exposure would smooth volatility.
+              {nextMoveByProfile[profile]}
             </p>
           </div>
         </CardContent>
