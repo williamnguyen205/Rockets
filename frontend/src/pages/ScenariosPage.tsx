@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import {
   Area,
   AreaChart,
@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { ArrowLeftRight, ArrowRight, BrainCircuit, Loader2, SlidersHorizontal, Sparkles, TrendingUp, UserRound } from "lucide-react"
+import { ArrowRight, Loader2, SlidersHorizontal, Sparkles, TrendingUp, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { simulateScenario, type ScenarioSimulationAnswer } from "@/lib/api"
@@ -52,11 +52,7 @@ const timelineYears: Record<InvestmentTimeline, number> = {
   "10+ years": 5,
 }
 
-const examplePrompts = [
-  "What if mortgage rates stay high and tech stocks fall 15%?",
-  "What if I lose my job for six months next year?",
-  "What if AI stocks rally but inflation comes back?",
-]
+type SelectableScenarioId = ScenarioId | "custom"
 
 function projectYearlyValues(
   startingValue: number,
@@ -96,10 +92,6 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-function formatSignedPercent(value: number) {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`
-}
-
 function AssumptionField({
   label,
   children,
@@ -136,22 +128,6 @@ function AssumptionTextInput(props: React.InputHTMLAttributes<HTMLInputElement>)
         props.className,
       )}
     />
-  )
-}
-
-function SimulationList({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div className="rounded-md border border-border bg-muted/30 p-4">
-      <p className="text-xs font-semibold uppercase text-muted-foreground">{title}</p>
-      <ul className="mt-3 space-y-2 text-sm leading-6 text-foreground">
-        {items.map((item) => (
-          <li key={item} className="flex gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
   )
 }
 
@@ -217,6 +193,75 @@ function ActionPlanCard({
         </span>
       </div>
     </button>
+  )
+}
+
+function CustomScenarioCard({
+  active,
+  draft,
+  error,
+  loading,
+  onDraftChange,
+  onGenerate,
+  onSelect,
+  plan,
+}: {
+  active: boolean
+  draft: string
+  error: string
+  loading: boolean
+  onDraftChange: (value: string) => void
+  onGenerate: () => void
+  onSelect: () => void
+  plan: ScenarioActionPlan | null
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border bg-card p-4 transition-colors",
+        active ? "border-primary shadow-panel" : "border-border",
+      )}
+    >
+      <button className="block w-full text-left" type="button" onClick={onSelect}>
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Make your own scenario</p>
+        <h3 className="mt-2 text-base font-semibold text-foreground">
+          {plan ? plan.title : "Ask Clarity AI for a custom plan"}
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Describe a personal or market what-if. Clarity AI will turn it into a rebalance plan with the same review flow.
+        </p>
+      </button>
+      <textarea
+        className="mt-3 min-h-24 w-full resize-y rounded-md border border-input bg-card px-3 py-2 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-ring/20"
+        placeholder="Example: What if I lose my job and tech stocks fall 15%?"
+        value={draft}
+        onChange={(event) => onDraftChange(event.target.value)}
+        onFocus={onSelect}
+      />
+      {error ? (
+        <p className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <Button className="mt-3 w-full" disabled={loading} type="button" onClick={onGenerate}>
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+        )}
+        Generate custom plan
+      </Button>
+      {plan ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="rounded-md border border-border bg-muted/45 px-2 py-1 text-xs font-semibold text-foreground">
+            {formatCurrency(plan.trades[0]?.amountUsd ?? 0)} reviewed
+          </span>
+          <span className="rounded-md border border-border bg-muted/45 px-2 py-1 text-xs font-semibold text-foreground">
+            {plan.transparency.confidence} confidence
+          </span>
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -333,175 +378,228 @@ function ReviewPlanPanel({
   )
 }
 
-type SuggestedTrade = {
-  action: "sell" | "buy"
-  symbol?: string
-  shares?: number
-  amountUsd: number
-  label: string
+function normalizeConfidence(value: string): "High" | "Medium" | "Low" {
+  const normalized = value.trim().toLowerCase()
+  if (normalized === "high") return "High"
+  if (normalized === "medium") return "Medium"
+  return "Low"
 }
 
-function computeSuggestedTrades(
-  snapshot: ReturnType<typeof import("@/lib/scenarioPortfolio").buildScenarioPortfolioSnapshot>,
-  holdings: Holding[],
-): SuggestedTrade[] {
-  if (snapshot.totalValueUsd <= 0) return []
-
-  const target = TARGET_ALLOCATION_BY_PROFILE[snapshot.profile]
-  const total = snapshot.totalValueUsd
-  const trades: SuggestedTrade[] = []
-
-  const stocksDrift = snapshot.stocksPct - target.stocks
-  const fundsDrift = snapshot.fundsPct - target.funds
-  const cashDrift = snapshot.cashPct - target.cash
-
-  if (stocksDrift > 5) {
-    const excess = (stocksDrift / 100) * total
-    const topStock = [...holdings]
-      .filter((h) => h.category === "stock")
-      .sort((a, b) => b.shares * b.lastPrice - a.shares * a.lastPrice)[0]
-    if (topStock && topStock.lastPrice > 0) {
-      const raw = excess / topStock.lastPrice
-      const shares = Math.min(parseFloat(raw.toFixed(2)), topStock.shares)
-      if (shares > 0.01) {
-        trades.push({
-          action: "sell",
-          symbol: topStock.symbol,
-          shares,
-          amountUsd: shares * topStock.lastPrice,
-          label: `Sell ~${shares.toFixed(2)} shares of ${topStock.symbol} (≈${formatCurrency(shares * topStock.lastPrice)}) — reduces stocks from ${snapshot.stocksPct}% toward your ${target.stocks}% target`,
-        })
-      }
-    }
-  } else if (stocksDrift < -5) {
-    const deficit = Math.abs((stocksDrift / 100) * total)
-    if (deficit > 50) {
-      trades.push({
-        action: "buy",
-        amountUsd: deficit,
-        label: `Add ≈${formatCurrency(deficit)} to stocks — moves you from ${snapshot.stocksPct}% toward your ${target.stocks}% target`,
-      })
-    }
-  }
-
-  if (fundsDrift > 5) {
-    const excess = (fundsDrift / 100) * total
-    const topFund = [...holdings]
-      .filter((h) => h.category === "fund")
-      .sort((a, b) => b.shares * b.lastPrice - a.shares * a.lastPrice)[0]
-    if (topFund && topFund.lastPrice > 0) {
-      const raw = excess / topFund.lastPrice
-      const shares = Math.min(parseFloat(raw.toFixed(2)), topFund.shares)
-      if (shares > 0.01) {
-        trades.push({
-          action: "sell",
-          symbol: topFund.symbol,
-          shares,
-          amountUsd: shares * topFund.lastPrice,
-          label: `Trim ~${shares.toFixed(2)} shares of ${topFund.symbol} (≈${formatCurrency(shares * topFund.lastPrice)}) — reduces funds from ${snapshot.fundsPct}% toward your ${target.funds}% target`,
-        })
-      }
-    }
-  } else if (fundsDrift < -5) {
-    const deficit = Math.abs((fundsDrift / 100) * total)
-    if (deficit > 50) {
-      trades.push({
-        action: "buy",
-        amountUsd: deficit,
-        label: `Add ≈${formatCurrency(deficit)} to mutual funds — moves you from ${snapshot.fundsPct}% toward your ${target.funds}% target`,
-      })
-    }
-  }
-
-  if (cashDrift > 8) {
-    const excess = (cashDrift / 100) * total
-    if (excess > 50) {
-      trades.push({
-        action: "buy",
-        amountUsd: excess,
-        label: `Deploy ≈${formatCurrency(excess)} of idle cash into your portfolio — reduces cash from ${snapshot.cashPct}% toward your ${target.cash}% target`,
-      })
-    }
-  }
-
-  return trades
-}
-
-function SuggestedTradesCard({
+function buildCustomScenarioPlan({
+  prompt,
+  simulation,
   snapshot,
-  holdings,
-  profile,
 }: {
+  prompt: string
+  simulation: ScenarioSimulationAnswer
   snapshot: ReturnType<typeof import("@/lib/scenarioPortfolio").buildScenarioPortfolioSnapshot>
-  holdings: Holding[]
-  profile: InvestorProfile
-}) {
-  const trades = computeSuggestedTrades(snapshot, holdings)
-  const target = TARGET_ALLOCATION_BY_PROFILE[profile]
+}): ScenarioActionPlan {
+  const before = { stocks: snapshot.stocksPct, funds: snapshot.fundsPct, cash: snapshot.cashPct }
+  const total = snapshot.totalValueUsd
+  const target = TARGET_ALLOCATION_BY_PROFILE[snapshot.profile]
+  const confidence = normalizeConfidence(simulation.confidence)
+  const text = `${prompt} ${simulation.title} ${simulation.summary} ${simulation.recommendedMoves.join(" ")}`.toLowerCase()
+  const firstMove = simulation.recommendedMoves[0] ?? simulation.summary
+  const firstRisk = simulation.riskNotes[0] ?? "The situation may develop differently than the scenario describes."
 
-  return (
-    <Card className="border-emerald-500/20 bg-emerald-500/[0.04]">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <ArrowLeftRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-          Suggested rebalancing trades
-        </CardTitle>
-        <CardDescription>
-          Specific actions to bring your portfolio in line with your {profile} target ({target.stocks}% stocks / {target.funds}% funds / {target.cash}% cash).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {trades.length === 0 ? (
-          <p className="rounded-md border border-border bg-card p-4 text-sm text-muted-foreground">
-            Your portfolio is close to its target allocation — no significant rebalancing trades needed right now.
-          </p>
-        ) : (
-          trades.map((trade) => (
-            <div
-              key={trade.label}
-              className="flex items-start gap-3 rounded-md border border-border bg-card p-4"
-            >
-              <span
-                className={cn(
-                  "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide",
-                  trade.action === "sell"
-                    ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"
-                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400",
-                )}
-              >
-                {trade.action}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium leading-6 text-foreground">{trade.label}</p>
-              </div>
-            </div>
-          ))
-        )}
-        {snapshot.totalValueUsd <= 0 && (
-          <p className="text-sm text-muted-foreground">
-            Add holdings and cash to your portfolio so Clarity can generate specific trade amounts.
-          </p>
-        )}
-        <p className="pt-1 text-xs leading-relaxed text-muted-foreground">
-          Approximate figures based on your saved profile targets. Not investment advice — consult a financial advisor before making real trades.
-        </p>
-      </CardContent>
-    </Card>
-  )
+  if (total <= 0) {
+    return {
+      title: simulation.title || "Custom scenario plan",
+      calmingCopy: simulation.summary,
+      before,
+      after: before,
+      trades: [
+        {
+          label: "Add holdings before rebalancing",
+          amountUsd: 0,
+          from: "No sale",
+          to: "Review only",
+          because: "Because this account has no portfolio value yet, Clarity can explain the scenario but cannot simulate a useful rebalance.",
+        },
+      ],
+      transparency: {
+        confidence,
+        estimatedTradingCostUsd: 0,
+        fundFeeNote: "Fund fees depend on what fund is selected after holdings are added.",
+        taxNote: "No tax impact is estimated because no simulated sale is available yet.",
+        whatCouldGoWrong: simulation.riskNotes.slice(0, 3),
+      },
+      reviewChecklist: simulation.assumptions.slice(0, 3),
+    }
+  }
+
+  const needsCash =
+    text.includes("withdraw") ||
+    text.includes("cash") ||
+    text.includes("job") ||
+    text.includes("rent") ||
+    text.includes("emergency") ||
+    text.includes("next year")
+  const inflationStress = text.includes("inflation") || text.includes("prices") || text.includes("rates")
+  const marketStress =
+    simulation.estimatedPortfolioImpactPct <= -8 ||
+    text.includes("drop") ||
+    text.includes("fall") ||
+    text.includes("recession")
+
+  if (needsCash) {
+    const cashBoostPct = Math.min(20, Math.max(8, Math.round(Math.abs(simulation.estimatedPortfolioImpactPct) / 2)))
+    const after = normalizeScenarioMix(before.stocks - cashBoostPct, before.funds, before.cash + cashBoostPct)
+    return {
+      title: simulation.title || "Custom cash-reserve plan",
+      calmingCopy: simulation.summary,
+      before,
+      after,
+      trades: [
+        {
+          label: "Build a cash cushion for this scenario",
+          amountUsd: Math.round(total * (cashBoostPct / 100)),
+          from: "Stocks and funds",
+          to: "Cash",
+          because: `Because your custom scenario may require spendable cash, Clarity AI recommends setting aside money before you are forced to sell during stress. ${firstMove}`,
+        },
+      ],
+      transparency: {
+        confidence,
+        estimatedTradingCostUsd: 0,
+        fundFeeNote: "Keeping more cash can reduce short-term market risk, but it may earn less than invested money.",
+        taxNote: "Raising cash by selling investments may create taxable gains in a regular brokerage account. Confirm with a tax professional before making real trades.",
+        whatCouldGoWrong: simulation.riskNotes.slice(0, 3),
+      },
+      reviewChecklist: [
+        "Confirm how much cash you may need and when.",
+        firstRisk,
+        "Review the before/after allocation before applying the practice rebalance.",
+      ],
+    }
+  }
+
+  if (inflationStress) {
+    const excessCashPct = Math.min(15, Math.max(0, before.cash - target.cash))
+    const after = normalizeScenarioMix(before.stocks, before.funds + excessCashPct, before.cash - excessCashPct)
+    return {
+      title: simulation.title || "Custom inflation plan",
+      calmingCopy: simulation.summary,
+      before,
+      after,
+      trades: [
+        {
+          label: excessCashPct > 0 ? "Shift extra idle cash toward diversified funds" : "Review cash and fund fees",
+          amountUsd: Math.round(total * (excessCashPct / 100)),
+          from: excessCashPct > 0 ? "Cash" : "No sale",
+          to: excessCashPct > 0 ? "Mutual funds" : "Review only",
+          because:
+            excessCashPct > 0
+              ? `Because the custom scenario points to inflation pressure, Clarity AI recommends reviewing only cash above your target. ${firstMove}`
+              : `Because your cash is not above target, Clarity AI recommends staying diversified and reviewing fees instead of forcing a trade. ${firstMove}`,
+        },
+      ],
+      transparency: {
+        confidence,
+        estimatedTradingCostUsd: 0,
+        fundFeeNote: "Broad beginner funds often charge a small yearly expense ratio; compare fees before any real purchase.",
+        taxNote: "Moving cash into a fund usually has no sale tax event, but later selling that fund can create taxes in a regular brokerage account.",
+        whatCouldGoWrong: simulation.riskNotes.slice(0, 3),
+      },
+      reviewChecklist: [
+        "Keep near-term bill and emergency cash untouched.",
+        firstRisk,
+        "Review the selected fund's yearly fee.",
+      ],
+    }
+  }
+
+  if (marketStress && before.stocks > target.stocks) {
+    const trimPct = Math.min(12, Math.max(5, before.stocks - target.stocks))
+    const cashBoost = 3
+    const after = normalizeScenarioMix(before.stocks - trimPct, before.funds + Math.max(0, trimPct - cashBoost), before.cash + Math.min(trimPct, cashBoost))
+    return {
+      title: simulation.title || "Custom market-stress plan",
+      calmingCopy: simulation.summary,
+      before,
+      after,
+      trades: [
+        {
+          label: "Trim above-plan stock exposure",
+          amountUsd: Math.round(total * (trimPct / 100)),
+          from: "Stocks",
+          to: "Mutual funds and cash",
+          because: `Because the custom scenario stresses the market and your stock slice is above target, Clarity AI recommends a modest trim rather than panic-selling. ${firstMove}`,
+        },
+      ],
+      transparency: {
+        confidence,
+        estimatedTradingCostUsd: 0,
+        fundFeeNote: "If money moves into a diversified ETF, the ongoing fund fee may be around 0.03%-0.10% per year for many broad index ETFs.",
+        taxNote: "Selling investments in a regular brokerage account may create taxes if there are gains. Confirm with a tax professional before making real trades.",
+        whatCouldGoWrong: simulation.riskNotes.slice(0, 3),
+      },
+      reviewChecklist: [
+        "Confirm this scenario still matches your actual concern.",
+        firstRisk,
+        "Review the before/after allocation before applying the practice rebalance.",
+      ],
+    }
+  }
+
+  return {
+    title: simulation.title || "Custom scenario review",
+    calmingCopy: simulation.summary,
+    before,
+    after: before,
+    trades: [
+      {
+        label: "No rebalance needed right now",
+        amountUsd: 0,
+        from: "Current mix",
+        to: "Review only",
+        because: `Because the AI scenario does not point to a clear allocation problem, the best move is to review the plan instead of forcing a trade. ${firstMove}`,
+      },
+    ],
+    transparency: {
+      confidence,
+      estimatedTradingCostUsd: 0,
+      fundFeeNote: "No new fund purchase is simulated in this custom plan.",
+      taxNote: "No tax impact is estimated because no simulated sale is recommended.",
+      whatCouldGoWrong: simulation.riskNotes.slice(0, 3),
+    },
+    reviewChecklist: [
+      "Confirm the scenario is realistic enough to plan around.",
+      firstRisk,
+      "Re-run the scenario if your goal, timeline, or holdings change.",
+    ],
+  }
+}
+
+function normalizeScenarioMix(stocks: number, funds: number, cash: number) {
+  const roundedStocks = Math.min(100, Math.max(0, Math.round(stocks)))
+  const roundedFunds = Math.min(100, Math.max(0, Math.round(funds)))
+  const roundedCash = Math.min(100, Math.max(0, Math.round(cash)))
+  const total = roundedStocks + roundedFunds + roundedCash
+  return {
+    stocks: roundedStocks,
+    funds: roundedFunds,
+    cash: Math.min(100, Math.max(0, roundedCash + (100 - total))),
+  }
 }
 
 export function ScenariosPage() {
-  const whatIfRef = useRef<HTMLDivElement>(null)
   const { holdings, cashBalance, monthlyContribution, profile, timeline, goal, updateProfileSettings, buyStock, sellStock } =
     usePortfolioStore()
-  const [selectedScenarioId, setSelectedScenarioId] = useState<ScenarioId>("market_drop_20")
-  const [reviewedScenarioId, setReviewedScenarioId] = useState<ScenarioId | null>(null)
+  const [selectedScenarioId, setSelectedScenarioId] = useState<SelectableScenarioId>("market_drop_20")
+  const [reviewedScenarioId, setReviewedScenarioId] = useState<SelectableScenarioId | null>(null)
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
   const [practiceMessage, setPracticeMessage] = useState("")
-  const [scenarioPrompt, setScenarioPrompt] = useState("")
+  const [customScenarioDraft, setCustomScenarioDraft] = useState("")
+  const [customScenarioError, setCustomScenarioError] = useState("")
+  const [customScenarioLoading, setCustomScenarioLoading] = useState(false)
+  const [customScenarioPlan, setCustomScenarioPlan] = useState<ScenarioActionPlan | null>(null)
+  const [customScenarioSuggestion, setCustomScenarioSuggestion] = useState<{
+    rationale: string
+    bullets: string[]
+  } | null>(null)
+  const [customScenarioDescription, setCustomScenarioDescription] = useState("Describe a personal or market what-if to generate a tailored practice rebalance.")
   const [simulation, setSimulation] = useState<ScenarioSimulationAnswer | null>(null)
-  const [simulationError, setSimulationError] = useState("")
-  const [simulationLoading, setSimulationLoading] = useState(false)
 
   const snapshot = useMemo(
     () =>
@@ -517,9 +615,59 @@ export function ScenariosPage() {
       })),
     [snapshot],
   )
-  const selectedScenario = scenarioPlans.find((item) => item.definition.id === selectedScenarioId) ?? scenarioPlans[0]
-  const selectedPlan = selectedScenario.plan
-  const canApplyPracticePlan = reviewedScenarioId === selectedScenarioId && selectedPlan.trades.length > 0
+  const customPlaceholderPlan = useMemo<ScenarioActionPlan>(
+    () => ({
+      title: "Build a custom scenario plan",
+      calmingCopy: "Type a what-if above and Clarity AI will create a practice rebalance with the same review flow as the preset scenarios.",
+      before: { stocks: snapshot.stocksPct, funds: snapshot.fundsPct, cash: snapshot.cashPct },
+      after: { stocks: snapshot.stocksPct, funds: snapshot.fundsPct, cash: snapshot.cashPct },
+      trades: [
+        {
+          label: "Generate a custom plan first",
+          amountUsd: 0,
+          from: "Current mix",
+          to: "Review only",
+          because: "A custom scenario needs your prompt before Clarity can recommend a practice move.",
+        },
+      ],
+      transparency: {
+        confidence: "Low",
+        estimatedTradingCostUsd: 0,
+        fundFeeNote: "Fund fees will appear after a custom plan is generated.",
+        taxNote: "Tax awareness will appear after a custom plan is generated.",
+        whatCouldGoWrong: ["The custom scenario has not been generated yet."],
+      },
+      reviewChecklist: ["Describe a scenario.", "Generate the custom plan.", "Review the recommendation before applying it."],
+    }),
+    [snapshot],
+  )
+  const selectedScenario =
+    selectedScenarioId === "custom"
+      ? null
+      : scenarioPlans.find((item) => item.definition.id === selectedScenarioId) ?? scenarioPlans[0]
+  const selectedPlan =
+    selectedScenarioId === "custom"
+      ? customScenarioPlan ?? customPlaceholderPlan
+      : selectedScenario?.plan ?? scenarioPlans[0].plan
+  const selectedDescription =
+    selectedScenarioId === "custom"
+      ? customScenarioDescription
+      : selectedScenario?.definition.description ?? scenarioPlans[0].definition.description
+  const selectedSuggestion =
+    selectedScenarioId === "custom"
+      ? customScenarioSuggestion ?? {
+          rationale: "Generate a custom scenario to see an AI-backed rebalancing rationale.",
+          bullets: [
+            "Type a what-if scenario.",
+            "Clarity AI will identify assumptions, recommended moves, and risks.",
+            "The result will use the same review and practice rebalance flow as preset scenarios.",
+          ],
+        }
+      : selectedScenario?.suggestion ?? scenarioPlans[0].suggestion
+  const canApplyPracticePlan =
+    reviewedScenarioId === selectedScenarioId &&
+    selectedPlan.trades.length > 0 &&
+    (selectedScenarioId !== "custom" || customScenarioPlan !== null)
 
   const startingValue = getPortfolioValue(holdings, cashBalance)
   const years = timelineYears[timeline]
@@ -587,34 +735,47 @@ export function ScenariosPage() {
     },
   ]
 
-  const scrollToWhatIf = () => {
-    whatIfRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }
+  async function generateCustomScenarioPlan() {
+    const prompt = customScenarioDraft.trim()
+    setSelectedScenarioId("custom")
+    setReviewPanelOpen(false)
+    setReviewedScenarioId(null)
+    setPracticeMessage("")
 
-  async function runSimulation() {
-    const prompt = scenarioPrompt.trim()
     if (!prompt) {
-      setSimulationError("Describe a scenario first.")
+      setCustomScenarioError("Describe a custom scenario first.")
       return
     }
 
-    setSimulationLoading(true)
-    setSimulationError("")
+    setCustomScenarioLoading(true)
+    setCustomScenarioError("")
     try {
       const result = await simulateScenario({
         scenario: prompt,
         portfolioSummary: scenarioSnapshotToApiPayload(snapshot),
       })
+      const plan = buildCustomScenarioPlan({ prompt, simulation: result, snapshot })
+
       setSimulation(result)
+      setCustomScenarioPlan(plan)
+      setCustomScenarioDescription(result.summary)
+      setCustomScenarioSuggestion({
+        rationale: result.summary,
+        bullets: [
+          `AI assumption: ${result.assumptions[0] ?? "The scenario may affect your portfolio mix."}`,
+          ...result.recommendedMoves.slice(0, 3),
+        ],
+      })
     } catch (error) {
-      setSimulation(null)
-      setSimulationError(
+      setCustomScenarioPlan(null)
+      setCustomScenarioSuggestion(null)
+      setCustomScenarioError(
         error instanceof Error
           ? error.message
-          : "Could not generate a simulation. Make sure the Clarity API and Ollama are running.",
+          : "Could not generate a custom plan. Make sure the Clarity API and Ollama are running.",
       )
     } finally {
-      setSimulationLoading(false)
+      setCustomScenarioLoading(false)
     }
   }
 
@@ -675,7 +836,7 @@ export function ScenariosPage() {
       price,
       change: -0.4,
       category: "fund",
-      risk: "Medium",
+      risk: "Low",
       expenseRatio: 0.03,
       diversification: "Thousands of U.S. companies in one fund",
       plainLanguageRisk: "Still moves with the stock market, but less tied to one company.",
@@ -700,7 +861,23 @@ export function ScenariosPage() {
 
     const actionMessages: string[] = []
 
-    if (selectedScenarioId === "inflation_high") {
+    if (selectedScenarioId === "custom") {
+      if (trade.from === "Cash") {
+        const purchase = buyPracticeFund(amount)
+        actionMessages.push(purchase.message)
+      } else if (trade.to === "Cash") {
+        const sale = sellHoldingsByValue(amount, ["stock", "fund"])
+        actionMessages.push(...sale.messages)
+        actionMessages.push(`${formatCurrency(sale.soldUsd)} moved into practice cash for the custom scenario.`)
+      } else if (trade.from.includes("Stocks")) {
+        const sale = sellHoldingsByValue(amount, ["stock"])
+        actionMessages.push(...sale.messages)
+        const purchase = buyPracticeFund(sale.soldUsd)
+        actionMessages.push(purchase.message)
+      } else {
+        actionMessages.push("Custom plan reviewed. No practice trade was needed for this scenario.")
+      }
+    } else if (selectedScenarioId === "inflation_high") {
       const purchase = buyPracticeFund(amount)
       actionMessages.push(purchase.message)
     } else if (selectedScenarioId === "withdraw_20pct_next_year") {
@@ -816,7 +993,7 @@ export function ScenariosPage() {
           </p>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid gap-3 lg:grid-cols-4">
           {scenarioPlans.map(({ definition, plan }) => (
             <ActionPlanCard
               key={definition.id}
@@ -831,6 +1008,24 @@ export function ScenariosPage() {
               }}
             />
           ))}
+          <CustomScenarioCard
+            active={selectedScenarioId === "custom"}
+            draft={customScenarioDraft}
+            error={customScenarioError}
+            loading={customScenarioLoading}
+            plan={customScenarioPlan}
+            onDraftChange={(value) => {
+              setCustomScenarioDraft(value)
+              setCustomScenarioError("")
+            }}
+            onGenerate={generateCustomScenarioPlan}
+            onSelect={() => {
+              setSelectedScenarioId("custom")
+              setPracticeMessage("")
+              setReviewPanelOpen(false)
+              setReviewedScenarioId(null)
+            }}
+          />
         </div>
 
         <Card className="overflow-hidden border-primary/20">
@@ -838,7 +1033,7 @@ export function ScenariosPage() {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <CardTitle>{selectedPlan.title}</CardTitle>
-                <CardDescription className="mt-2">{selectedScenario.definition.description}</CardDescription>
+                <CardDescription className="mt-2">{selectedDescription}</CardDescription>
               </div>
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground">
@@ -862,9 +1057,9 @@ export function ScenariosPage() {
 
               <div className="rounded-md border border-border bg-muted/30 p-4">
                 <p className="text-xs font-semibold uppercase text-muted-foreground">Why this is recommended</p>
-                <p className="mt-3 text-sm leading-6 text-foreground">{selectedScenario.suggestion.rationale}</p>
+                <p className="mt-3 text-sm leading-6 text-foreground">{selectedSuggestion?.rationale}</p>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-                  {selectedScenario.suggestion.bullets.slice(1, 4).map((bullet) => (
+                  {selectedSuggestion?.bullets.slice(1, 4).map((bullet) => (
                     <li key={bullet} className="flex gap-2">
                       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                       <span>{bullet}</span>
@@ -1048,113 +1243,6 @@ export function ScenariosPage() {
         ))}
       </div>
 
-      <div ref={whatIfRef} className="scroll-mt-8 space-y-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold text-foreground">AI market simulation</h2>
-          <p className="text-sm text-muted-foreground">
-            Type your own scenario. Clarity AI translates it into assumptions, projected impact, and next steps.
-          </p>
-        </div>
-
-        <Card className="border-accent/25">
-          <CardContent className="space-y-4 p-5">
-            <label className="block space-y-2">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Scenario</span>
-              <textarea
-                className="min-h-28 w-full resize-y rounded-md border border-input bg-card px-3 py-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-ring/20"
-                placeholder="Example: What if the market drops 20%, rent goes up, and I need cash in 18 months?"
-                value={scenarioPrompt}
-                onChange={(event) => {
-                  setScenarioPrompt(event.target.value)
-                  setSimulationError("")
-                }}
-              />
-            </label>
-
-            <div className="flex flex-wrap gap-2">
-              {examplePrompts.map((prompt) => (
-                <button
-                  key={prompt}
-                  className="rounded-md border border-border bg-muted/45 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
-                  type="button"
-                  onClick={() => {
-                    setScenarioPrompt(prompt)
-                    setSimulationError("")
-                  }}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-
-            {simulationError ? (
-              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive" role="alert">
-                {simulationError}
-              </p>
-            ) : null}
-
-            <Button type="button" onClick={runSimulation} disabled={simulationLoading}>
-              {simulationLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-              )}
-              Generate AI simulation
-            </Button>
-          </CardContent>
-        </Card>
-
-        {simulation ? (
-          <>
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <BrainCircuit className="h-5 w-5 text-accent" aria-hidden="true" />
-                    {simulation.title}
-                  </CardTitle>
-                  <CardDescription className="mt-2">{simulation.summary}</CardDescription>
-                </div>
-                <div className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border bg-border text-center sm:min-w-[320px]">
-                  <div className="bg-card p-3">
-                    <p className="text-[0.65rem] font-semibold uppercase text-muted-foreground">Return shift</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
-                      {formatSignedPercent(simulation.estimatedReturnAdjustmentPp)}
-                    </p>
-                  </div>
-                  <div className="bg-card p-3">
-                    <p className="text-[0.65rem] font-semibold uppercase text-muted-foreground">Impact</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
-                      {formatSignedPercent(simulation.estimatedPortfolioImpactPct)}
-                    </p>
-                  </div>
-                  <div className="bg-card p-3">
-                    <p className="text-[0.65rem] font-semibold uppercase text-muted-foreground">Confidence</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{simulation.confidence}</p>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-3">
-              <SimulationList title="Assumptions" items={simulation.assumptions} />
-              <SimulationList title="Moves to review" items={simulation.recommendedMoves} />
-              <SimulationList title="Risks" items={simulation.riskNotes} />
-              <p className="text-xs leading-relaxed text-muted-foreground lg:col-span-3">
-                Educational simulation only. This is not investment, tax, or legal advice, and it is not a prediction.
-              </p>
-            </CardContent>
-          </Card>
-
-          <SuggestedTradesCard snapshot={snapshot} holdings={holdings} profile={profile} />
-          </>
-        ) : null}
-      </div>
-
-      <Button className="w-full" size="lg" type="button" onClick={scrollToWhatIf}>
-        Build an AI scenario
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </Button>
     </div>
   )
 }
