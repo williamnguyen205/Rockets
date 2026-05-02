@@ -30,6 +30,12 @@ type Module = {
   lessons: Lesson[]
 }
 
+type LessonDeepDive = {
+  notes: string[]
+  useInClarity: string
+  watchOut: string
+}
+
 const curriculum: Module[] = [
   {
     id: "money-shrink",
@@ -243,6 +249,218 @@ const allLessons = curriculum.flatMap((module) =>
   module.lessons.map((lesson) => ({ ...lesson, moduleId: module.id, moduleTitle: module.title })),
 )
 
+const lessonDeepDives: Record<string, LessonDeepDive> = {
+  inflation: {
+    notes: [
+      "Inflation matters because cash does not need to lose dollars to lose power. If prices rise while your cash sits still, the same balance buys less later.",
+      "This does not mean all cash is bad. Cash is useful for bills, emergencies, and money you need soon. The problem is keeping long-term money idle for years without a reason.",
+      "Investing is one way people try to keep up with rising prices, but it comes with ups and downs. The right balance depends on when you need the money.",
+    ],
+    useInClarity:
+      "Run the inflation scenario and compare how much cash you hold versus your target cash amount.",
+    watchOut:
+      "Do not treat inflation as a reason to invest emergency money. Money needed soon should stay easier to access.",
+  },
+  investing: {
+    notes: [
+      "Investing means accepting some uncertainty today for the chance of growth over time. The reward is not guaranteed, but historically diversified portfolios have helped people build wealth.",
+      "Beginners often think investing means picking the next big stock. A calmer starting point is owning broad funds, adding regularly, and keeping risk matched to your timeline.",
+      "A good investment plan should answer: what is this money for, when do I need it, and how much volatility can I handle?",
+    ],
+    useInClarity:
+      "Use onboarding to set your goal and timeline, then check whether your dashboard mix matches that plan.",
+    watchOut:
+      "Do not confuse investing with gambling on one exciting ticker. Concentration can make losses much sharper.",
+  },
+  "start-now": {
+    notes: [
+      "Time helps because returns can compound. Compounding means future growth can happen on both your original money and earlier gains.",
+      "Starting small also teaches behavior. You learn how prices move, how emotions feel, and how to stay consistent without risking too much at once.",
+      "The goal is not to perfectly time the market. For beginners, building the habit often matters more than finding the perfect entry point.",
+    ],
+    useInClarity:
+      "Set a monthly contribution and watch how projected paths respond when you change the amount.",
+    watchOut:
+      "Waiting until you feel like an expert can delay the habit for years. Start with education and practice first.",
+  },
+  stock: {
+    notes: [
+      "A stock is ownership in one company. If the company does well, the stock may rise. If expectations fall, the stock may drop quickly.",
+      "Single stocks can be exciting because the upside can be large, but they also carry company-specific risk: bad earnings, lawsuits, leadership changes, or sector news.",
+      "For beginners, individual stocks are usually easier to understand after you already know how much of your portfolio should be diversified funds and cash.",
+    ],
+    useInClarity:
+      "Search a stock, read its risk assessment, then compare its size in your holdings against your total portfolio.",
+    watchOut:
+      "A familiar brand is not automatically a safe investment. Price can still be volatile.",
+  },
+  bond: {
+    notes: [
+      "A bond is a loan. You lend money to a government or company, and they usually pay interest over time.",
+      "Bonds are often used to reduce portfolio swings, but they are not risk-free. Bond prices can fall when interest rates rise or when borrowers look less reliable.",
+      "Many beginners get bond exposure through bond funds instead of buying individual bonds directly.",
+    ],
+    useInClarity:
+      "Use bond-style funds as the steadier side of a practice portfolio when your timeline is shorter.",
+    watchOut:
+      "Do not assume bonds always go up when stocks go down. They can still lose value.",
+  },
+  "mutual-fund": {
+    notes: [
+      "A mutual fund pools money from many investors and buys a collection of investments. That collection can include stocks, bonds, or both.",
+      "Funds help beginners diversify because one purchase can spread money across many holdings. This reduces dependence on one company.",
+      "Funds charge fees. Even small yearly fees matter over long periods, so beginners should learn to compare expense ratios.",
+    ],
+    useInClarity:
+      "Use the fund suggestions in Stocks to see fee and diversification notes before adding a practice fund.",
+    watchOut:
+      "A fund can still be risky if it only focuses on one narrow sector or strategy.",
+  },
+  etf: {
+    notes: [
+      "An ETF is a fund that trades during the day like a stock. Many ETFs are broad, low-cost, and easy to use in a beginner portfolio.",
+      "The important question is what the ETF owns. A total-market ETF is very different from a narrow technology or crypto-related ETF.",
+      "For beginners, broad ETFs can be a practical way to diversify while keeping the portfolio simple.",
+    ],
+    useInClarity:
+      "Search VTI, VXUS, or BND and compare the fee, diversification note, and risk label.",
+    watchOut:
+      "Do not judge an ETF by price alone. Look at what it holds and what fee it charges.",
+  },
+  "what-is-risk": {
+    notes: [
+      "Risk is not just losing money. It is the chance your outcome differs from what you expected, especially over short periods.",
+      "Single stocks tend to have more company-specific risk. Diversified funds spread risk across many investments, but they can still fall during broad market drops.",
+      "The right amount of risk depends on your goal and timeline. Money needed soon usually deserves less volatility.",
+    ],
+    useInClarity:
+      "Compare risk badges in your holdings and run a market-drop scenario to see how your plan responds.",
+    watchOut:
+      "High risk is not automatically bad, but it is dangerous when it does not match your timeline or temperament.",
+  },
+  "time-superpower": {
+    notes: [
+      "Longer timelines give investments more room to recover from bad periods. Short timelines leave less room for mistakes.",
+      "If you need money in one year, a market drop can become a real problem. If you need money in 20 years, the same drop may be easier to ride out.",
+      "Your timeline should influence your mix of stocks, funds, and cash.",
+    ],
+    useInClarity:
+      "Change your timeline in Plan Fit Score and watch how target allocation guidance changes.",
+    watchOut:
+      "Do not use a long-term portfolio for short-term goals unless you can handle selling during a downturn.",
+  },
+  "sleep-test": {
+    notes: [
+      "The sleep test asks whether your portfolio would make you panic during a bad market week. If it would, the plan may be too aggressive.",
+      "A portfolio only works if you can stick with it. The mathematically highest-return mix is not useful if it makes you sell at the worst time.",
+      "Being honest about emotions is part of risk management, not a weakness.",
+    ],
+    useInClarity:
+      "Use the market-drop scenario and ask whether the recommended plan feels manageable.",
+    watchOut:
+      "Do not choose an aggressive profile just because it sounds impressive. Choose what you can actually live with.",
+  },
+  "what-is-diversification": {
+    notes: [
+      "Diversification means spreading money so one mistake does not dominate your future. It can happen across companies, sectors, countries, and asset types.",
+      "Owning ten tech stocks is not as diversified as it may look if they all move on the same news.",
+      "Broad funds are a beginner-friendly shortcut because they can hold hundreds or thousands of investments.",
+    ],
+    useInClarity:
+      "Check whether one holding is a large share of your portfolio and compare stocks versus funds in allocation.",
+    watchOut:
+      "Diversification reduces dependence on one outcome, but it does not prevent losses during a broad market downturn.",
+  },
+  "asset-allocation": {
+    notes: [
+      "Asset allocation is your portfolio recipe. It decides how much is in stocks, funds, bonds, and cash.",
+      "Allocation matters because it drives much of the portfolio's behavior. More stocks usually means more growth potential and more volatility.",
+      "A beginner plan should start with allocation before individual picks.",
+    ],
+    useInClarity:
+      "Use Current vs target to see where your actual mix has drifted away from your selected profile.",
+    watchOut:
+      "Do not focus only on ticker choices while ignoring the total mix.",
+  },
+  rebalancing: {
+    notes: [
+      "Rebalancing means bringing your portfolio back toward its intended mix. It is a discipline for managing risk after prices move.",
+      "If stocks rise a lot, they can become too much of your portfolio. If stocks fall, your portfolio may become more conservative than intended.",
+      "Rebalancing does not predict the market. It keeps your plan from drifting without you noticing.",
+    ],
+    useInClarity:
+      "Open Scenarios, choose a what-if, then review the before/after allocation and practice rebalance preview.",
+    watchOut:
+      "Rebalancing too often can create unnecessary trading, costs, and taxes in real accounts.",
+  },
+  "start-small": {
+    notes: [
+      "Starting small lowers the emotional pressure. You can learn how investing works while mistakes are still inexpensive.",
+      "Small amounts also help you build consistency. A repeatable habit is easier to improve than a one-time guess.",
+      "The first goal is not to be perfect. It is to become familiar with the process.",
+    ],
+    useInClarity:
+      "Use a blank account, add practice cash, and make a small simulated buy from the Stocks page.",
+    watchOut:
+      "Do not wait until you have a huge amount before learning the basics.",
+  },
+  dca: {
+    notes: [
+      "Dollar cost averaging means investing a fixed amount on a schedule. It removes some pressure to guess the perfect day.",
+      "When prices are lower, the same dollar amount buys more shares. When prices are higher, it buys fewer shares.",
+      "This is a behavior strategy, not a guarantee. It helps with consistency and emotional control.",
+    ],
+    useInClarity:
+      "Change monthly contribution and watch how projections respond over time.",
+    watchOut:
+      "Dollar cost averaging does not protect you from losses if the investment itself is too risky for your timeline.",
+  },
+  "account-type": {
+    notes: [
+      "Different accounts have different rules. Retirement accounts may offer tax benefits but can limit access. Taxable accounts may be more flexible but create taxable events.",
+      "The account should match the goal. Retirement money, home money, and emergency money may belong in different places.",
+      "Clarity does not choose a real account for you, but it reminds you when taxes and access matter.",
+    ],
+    useInClarity:
+      "Read tax notes in the scenario review before applying any practice rebalance.",
+    watchOut:
+      "Do not ignore taxes when selling investments in a real brokerage account.",
+  },
+  "stock-price": {
+    notes: [
+      "A stock price is the current price for one share. It does not tell you the full value of the company by itself.",
+      "A $20 stock can be more expensive than a $200 stock if the company has many more shares or weaker business results.",
+      "Beginners should pair price with context like market cap, risk, and how much of the portfolio the position represents.",
+    ],
+    useInClarity:
+      "Use ticker lookup to compare price, market cap, day range, and risk explanation together.",
+    watchOut:
+      "Do not buy a stock only because the share price looks cheap.",
+  },
+  "percent-change": {
+    notes: [
+      "Percent change shows movement relative to the starting price. It makes different stocks easier to compare.",
+      "A $5 move is huge for a $20 stock but small for a $500 stock. Percent change solves that comparison problem.",
+      "Large percent moves can signal volatility, especially for single stocks.",
+    ],
+    useInClarity:
+      "Look at daily move in holdings and connect larger moves to higher single-stock risk.",
+    watchOut:
+      "One-day percent change is useful context, but it is not a full investing thesis.",
+  },
+  "market-cap": {
+    notes: [
+      "Market cap estimates the total market value of a company. It is share price multiplied by the number of shares.",
+      "Large companies are often more established, but they can still be risky. Smaller companies may grow faster but can swing more sharply.",
+      "Market cap is one input in Clarity's risk explanation, alongside volatility signals.",
+    ],
+    useInClarity:
+      "Use market cap on the Stocks page to understand company size before adding a practice position.",
+    watchOut:
+      "Large does not always mean safe, and small does not always mean bad. Use it as context.",
+  },
+}
+
 function readSavedProgress() {
   if (typeof window === "undefined") return new Set<string>()
 
@@ -279,6 +497,7 @@ export function LearnPage() {
 
   const selectedLesson =
     allLessons.find((lesson) => lesson.id === selectedLessonId) ?? nextLesson
+  const selectedDeepDive = lessonDeepDives[selectedLesson.id]
 
   const completedCount = completedLessons.size
   const progressPercent = Math.round((completedCount / allLessons.length) * 100)
@@ -433,6 +652,29 @@ export function LearnPage() {
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedLesson.example}</p>
                 </div>
               </div>
+
+              {selectedDeepDive ? (
+                <div className="grid gap-4">
+                  <div className="rounded-md border border-border bg-card p-4">
+                    <p className="text-xs font-semibold uppercase tracking-normal text-primary">Lesson notes</p>
+                    <div className="mt-3 space-y-3 text-sm leading-7 text-muted-foreground">
+                      {selectedDeepDive.notes.map((note) => (
+                        <p key={note}>{note}</p>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-normal text-primary">Use this in Clarity</p>
+                      <p className="mt-2 text-sm leading-6 text-foreground">{selectedDeepDive.useInClarity}</p>
+                    </div>
+                    <div className="rounded-md border border-amber-500/25 bg-amber-500/10 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-normal text-amber-700 dark:text-amber-300">Beginner trap</p>
+                      <p className="mt-2 text-sm leading-6 text-foreground">{selectedDeepDive.watchOut}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="rounded-md border border-border bg-muted/25 p-4">
                 <ClarityChatBlock
