@@ -37,6 +37,11 @@ type PortfolioState = {
     timeline: InvestmentTimeline
     monthlyContribution: number
   }) => void
+  applyOnboardingResult: (settings: {
+    goal: string
+    profile: InvestorProfile
+    timeline: InvestmentTimeline
+  }) => void
   buyStock: (trade: {
     symbol: string
     name: string
@@ -184,6 +189,19 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
         profile,
         timeline,
         monthlyContribution: normalizedContribution,
+      }),
+    })
+  },
+  applyOnboardingResult: ({ goal, profile, timeline }) => {
+    const monthlyContribution = get().monthlyContribution
+    set({
+      goal,
+      profile,
+      timeline,
+      healthScore: getHealthScore({
+        profile,
+        timeline,
+        monthlyContribution,
       }),
     })
   },

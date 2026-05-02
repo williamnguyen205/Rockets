@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Bell,
   Check,
@@ -8,12 +9,14 @@ import {
   Moon,
   Shield,
   SlidersHorizontal,
+  Target,
   UserRound,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ClarityIcon } from "@/components/ClarityLogo"
+import { readOnboarding } from "@/lib/onboarding"
 import { cn } from "@/lib/utils"
 import { usePortfolioStore } from "@/store/portfolio"
 
@@ -119,6 +122,7 @@ function Toggle({
 }
 
 export function AccountPage() {
+  const navigate = useNavigate()
   const {
     profile,
     timeline,
@@ -246,6 +250,7 @@ export function AccountPage() {
         monthlyContribution,
         healthScore,
       },
+      onboarding: readOnboarding(),
       preferences,
       portfolio: {
         cashBalance,
@@ -321,6 +326,29 @@ export function AccountPage() {
                 onChange={(event) => updateForm("email", event.target.value)}
               />
             </Field>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" aria-hidden="true" />
+              Investing posture
+            </CardTitle>
+            <CardDescription>
+              Revisit the short questionnaire if your goal, timeline, or comfort with volatility has changed. Your
+              answers tune the dashboard and future scenario suggestions—no jargon required.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              className="w-full sm:w-auto"
+              type="button"
+              variant="secondary"
+              onClick={() => navigate("/onboarding", { state: { retake: true } })}
+            >
+              Retake questionnaire
+            </Button>
           </CardContent>
         </Card>
 
