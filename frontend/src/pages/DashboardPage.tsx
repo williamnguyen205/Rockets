@@ -960,6 +960,17 @@ export function DashboardPage() {
               </p>
             </div>
           ) : null}
+          {holdings.length > 0 ? (
+            <div className="hidden grid-cols-[76px_minmax(0,1fr)_96px_116px_86px_258px_24px] items-center gap-4 px-4 text-xs font-semibold uppercase text-muted-foreground sm:grid">
+              <span className="text-center">Symbol</span>
+              <span className="pl-0">Name</span>
+              <span className="text-right">Shares</span>
+              <span className="text-center">Value</span>
+              <span className="text-right">Daily move</span>
+              <span className="text-right">Type / Risk</span>
+              <span />
+            </div>
+          ) : null}
           {holdings.map((holding) => {
             const positive = holding.change >= 0
             const value = getHoldingValue(holding)
@@ -988,7 +999,7 @@ export function DashboardPage() {
                 <div className="hidden text-right text-sm font-medium text-foreground sm:block">
                   {holding.shares.toFixed(2)} sh
                 </div>
-                <div className="hidden text-right text-sm font-medium text-foreground sm:block">{formatCurrency(value)}</div>
+                <div className="hidden text-center text-sm font-medium tabular-nums text-foreground sm:block">{formatCurrency(value)}</div>
                 <div
                   className={cn(
                     "hidden items-center justify-end gap-1 text-sm font-semibold sm:flex",
