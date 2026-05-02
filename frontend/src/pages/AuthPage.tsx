@@ -142,7 +142,7 @@ export function AuthPage() {
   const [password, setPassword] = useState("")
   const [formError, setFormError] = useState("")
   const navigate = useNavigate()
-  const resetOnboarding = usePortfolioStore((state) => state.resetOnboarding)
+  const prepareNewAccount = usePortfolioStore((state) => state.prepareNewAccount)
 
   function setModeAndClearError(next: AuthMode) {
     setMode(next)
@@ -158,8 +158,8 @@ export function AuthPage() {
     }
     setFormError("")
     if (mode === "create") {
+      prepareNewAccount()
       startSession("create")
-      resetOnboarding()
       navigate("/onboarding")
       return
     }

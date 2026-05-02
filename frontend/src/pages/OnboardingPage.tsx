@@ -170,8 +170,8 @@ export function OnboardingPage() {
   const [profile, setProfile] = useState<InvestorProfile>(storedProfile)
   const [goal, setGoal] = useState<string>(storedGoal)
   const [monthlyContribution, setMonthlyContribution] = useState<number>(storedMonthly)
-  const [contributionInput, setContributionInput] = useState<string>(
-    storedMonthly ? String(storedMonthly) : "",
+  const [contributionInput, setContributionInput] = useState<string>(() =>
+    String(storedMonthly ?? 0),
   )
 
   const totalSteps = 5

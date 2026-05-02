@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   Cell,
   Pie,
@@ -7,18 +7,115 @@ import {
   Tooltip,
 } from "recharts"
 import { Link } from "react-router-dom"
-import { ArrowDownRight, ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight, ChevronDown, ShieldCheck, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import {
+  getAllocation,
   getAllocationDrift,
   getHoldingValue,
+  getPortfolioValue,
   TARGET_ALLOCATION_BY_PROFILE,
+  type Holding,
+  type InvestmentTimeline,
   type InvestorProfile,
   type RiskLevel,
   usePortfolioStore,
 } from "@/store/portfolio"
+
+const PROFILE_CHOICES: { value: InvestorProfile; label: string }[] = [
+  { value: "Conservative", label: "Conservative" },
+  { value: "Balanced", label: "Balanced" },
+  { value: "Growth", label: "Growth" },
+  { value: "Aggressive", label: "Aggressive" },
+]
+
+const TIMELINE_CHOICES: { value: InvestmentTimeline; label: string }[] = [
+  { value: "1-3 years", label: "Within the next 1–3 years" },
+  { value: "3-5 years", label: "About 3–5 years" },
+  { value: "5-10 years", label: "5–10 years" },
+  { value: "10+ years", label: "More than 10 years" },
+]
+
+const GOAL_CHOICES: { value: string; label: string }[] = [
+  { value: "Buying a home", label: "Buying a home" },
+  { value: "Retirement", label: "Retirement" },
+  { value: "Wealth Growth", label: "Wealth growth" },
+  { value: "Big purchase", label: "A big purchase (car, wedding, education)" },
+  { value: "Exploring", label: "Other / not sure yet" },
+]
+
+const MONTHLY_PRESETS = [0, 50, 200, 500, 1000]
+
+function goalChipLabel(goal: string) {
+  return GOAL_CHOICES.find((g) => g.value === goal)?.label ?? goal
+}
+
+function PlanMetricDropdown({
+  open,
+  onOpenChange,
+  triggerLabel,
+  triggerText,
+  children,
+  menuRole = "listbox",
+}: {
+  open: boolean
+  onOpenChange: (next: boolean) => void
+  triggerLabel: string
+  triggerText: string
+  children: ReactNode
+  /** Use "none" when the panel mixes inputs with options (e.g. monthly custom amount). */
+  menuRole?: "listbox" | "none"
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handlePointerDown(event: MouseEvent) {
+      if (!ref.current?.contains(event.target as Node)) onOpenChange(false)
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onOpenChange(false)
+    }
+    document.addEventListener("mousedown", handlePointerDown)
+    document.addEventListener("keydown", handleKey)
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown)
+      document.removeEventListener("keydown", handleKey)
+    }
+  }, [open, onOpenChange])
+
+  return (
+    <div className="relative z-0" ref={ref}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className={cn(
+          "flex w-full min-w-0 items-center justify-center gap-1 rounded-full border border-border/70 bg-muted/55 px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35",
+          open && "border-primary/50 bg-muted",
+        )}
+        type="button"
+        onClick={() => onOpenChange(!open)}
+      >
+        <span className="sr-only">{triggerLabel}: </span>
+        <span className="truncate">{triggerText}</span>
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 shrink-0 opacity-70 transition-transform", open && "rotate-180")}
+          aria-hidden="true"
+        />
+      </button>
+      {open ? (
+        <div
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-[200] max-h-[min(24rem,calc(100vh-8rem))] min-w-[10.5rem] overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-lg outline-none ring-1 ring-border/60 sm:left-1/2 sm:right-auto sm:min-w-[14rem] sm:-translate-x-1/2"
+          role={menuRole === "none" ? undefined : menuRole}
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 const riskVariant: Record<RiskLevel, "low" | "medium" | "high"> = {
   Low: "low",
@@ -99,9 +196,9 @@ function DeltaChip({ driftPp }: { driftPp: number }) {
     return <span className="text-xs font-medium text-muted-foreground">On target</span>
   }
   if (rounded > 0) {
-    return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">+{rounded}pp overweight</span>
+    return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">Above target</span>
   }
-  return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">{rounded}pp underweight</span>
+  return <span className="text-xs font-semibold text-amber-800 dark:text-amber-400">Below target</span>
 }
 
 const nextMoveByProfile: Record<InvestorProfile, string> = {
@@ -115,9 +212,72 @@ const nextMoveByProfile: Record<InvestorProfile, string> = {
     "Watch concentration risk closely and rebalance when fast-moving positions start dominating the portfolio.",
 }
 
+function getSuggestedNextMove(
+  profile: InvestorProfile,
+  allocation: ReturnType<typeof getAllocation>,
+  holdings: Holding[],
+  cashBalance: number,
+  formatMoney: (value: number) => string,
+) {
+  const target = TARGET_ALLOCATION_BY_PROFILE[profile]
+  const cashPct = allocation.find((a) => a.name === "Cash")?.value ?? 0
+  const stocksPct = allocation.find((a) => a.name === "Stocks")?.value ?? 0
+  const fundsPct = allocation.find((a) => a.name === "Mutual Funds")?.value ?? 0
+  const investedPct = stocksPct + fundsPct
+  const totalValue = getPortfolioValue(holdings, cashBalance)
+
+  if (totalValue <= 0) {
+    return "Add practice cash and your first positions from the Stocks tab—your allocation bars will update with every trade."
+  }
+
+  if (holdings.length === 0 && cashBalance > 0) {
+    return `You're 100% in cash (${formatMoney(cashBalance)} available). Your ${profile.toLowerCase()} target is about ${target.stocks}% stocks, ${target.funds}% funds, and ${target.cash}% cash—when you're ready, start with a buy that moves you toward that mix.`
+  }
+
+  if (cashPct >= 90 && holdings.length > 0) {
+    return `Most of your portfolio is still cash (${cashPct}%). Consider investing toward your ${target.stocks + target.funds}% stocks-and-funds target if that fits your timeline.`
+  }
+
+  if (cashPct > target.cash + 12) {
+    return `You're at about ${cashPct}% cash versus a ~${target.cash}% target for a ${profile.toLowerCase()} posture—deploying some into stocks or funds could bring you closer to plan.`
+  }
+
+  if (investedPct > target.stocks + target.funds + 12) {
+    return "You're more invested than your target mix—if a goal is getting closer, consider trimming risk or building a cash buffer."
+  }
+
+  return nextMoveByProfile[profile]
+}
+
 export function DashboardPage() {
-  const { healthScore, profile, timeline, goal, monthlyContribution, allocation, holdings, cashBalance } =
-    usePortfolioStore()
+  const {
+    healthScore,
+    profile,
+    timeline,
+    goal,
+    monthlyContribution,
+    holdings,
+    cashBalance,
+    updateProfileSettings,
+  } = usePortfolioStore()
+
+  const [openMetric, setOpenMetric] = useState<"profile" | "timeline" | "goal" | "monthly" | null>(null)
+  const [monthlyInputDraft, setMonthlyInputDraft] = useState("")
+
+  function commitMonthlyFromDraft() {
+    const parsed = Number.parseFloat(monthlyInputDraft.replace(/,/g, ""))
+    const value = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+    updateProfileSettings({ monthlyContribution: value })
+    setOpenMetric(null)
+  }
+
+  const monthlyOptions = useMemo(
+    () => [...new Set([...MONTHLY_PRESETS, monthlyContribution])].sort((a, b) => a - b),
+    [monthlyContribution],
+  )
+
+  const allocation = useMemo(() => getAllocation(holdings, cashBalance), [holdings, cashBalance])
+  const pieSlices = useMemo(() => allocation.filter((item) => item.value > 0), [allocation])
 
   const targetAllocation = TARGET_ALLOCATION_BY_PROFILE[profile]
   const drift = useMemo(
@@ -152,6 +312,13 @@ export function DashboardPage() {
     [allocation, targetAllocation, drift],
   )
 
+  const suggestedNextMove = useMemo(
+    () => getSuggestedNextMove(profile, allocation, holdings, cashBalance, formatCurrency),
+    [profile, allocation, holdings, cashBalance],
+  )
+
+  const portfolioTotal = useMemo(() => getPortfolioValue(holdings, cashBalance), [holdings, cashBalance])
+
   return (
     <div className="space-y-8">
       <section className="space-y-3 text-center">
@@ -164,44 +331,68 @@ export function DashboardPage() {
         </p>
       </section>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-8">
-          <HealthRing score={healthScore} />
-          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[profile, timeline, goal, `${formatCurrency(monthlyContribution)}/mo`].map((chip) => (
-              <div
-                key={chip}
-                className="rounded-full border border-border/70 bg-muted/55 px-3 py-2 text-center text-xs font-medium text-muted-foreground"
-              >
-                {chip}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
-          <CardTitle>Your Allocation</CardTitle>
+          <CardTitle>Your allocation</CardTitle>
+          <CardDescription>
+            Percentages are computed from your positions and cash ({formatCurrency(portfolioTotal)} total)—same numbers
+            drive the guidance below.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actual mix</p>
+            <div
+              className="flex h-11 w-full overflow-hidden rounded-full border-2 border-border/90 bg-muted shadow-inner"
+              role="img"
+              aria-label={`Allocation: ${allocation.map((s) => `${s.name} ${s.value}%`).join(", ")}`}
+            >
+              {allocation.map((seg) =>
+                seg.value > 0 ? (
+                  <div
+                    key={seg.name}
+                    className="flex min-w-0 items-center justify-center px-1 text-[10px] font-black leading-tight text-white drop-shadow-sm sm:text-xs"
+                    style={{
+                      width: `${seg.value}%`,
+                      backgroundColor: seg.color,
+                    }}
+                    title={`${seg.name}: ${seg.value}%`}
+                  >
+                    {seg.value >= 6 ? `${seg.value}%` : ""}
+                  </div>
+                ) : null,
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {allocation.map((item) => (
+                <span key={item.name} className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="font-medium text-foreground">{item.name}</span>
+                  <span>{item.value}%</span>
+                </span>
+              ))}
+            </div>
+          </div>
+
           <div className="grid items-center gap-5 sm:grid-cols-[1fr_0.9fr]">
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Tooltip content={<AllocationTooltip />} cursor={false} />
                   <Pie
-                    data={allocation}
+                    data={pieSlices.length ? pieSlices : [{ name: "Cash", value: 100, color: "#6495ed" }]}
                     dataKey="value"
                     innerRadius={66}
                     outerRadius={92}
-                    paddingAngle={4}
+                    paddingAngle={pieSlices.length > 1 ? 4 : 0}
                     stroke="rgba(10,13,20,0.92)"
                     strokeWidth={5}
                   >
-                    {allocation.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
+                    {(pieSlices.length ? pieSlices : [{ name: "Cash", value: 100, color: "#6495ed" }]).map(
+                      (entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ),
+                    )}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
@@ -225,11 +416,168 @@ export function DashboardPage() {
               ))}
             </div>
           </div>
-          <div className="mt-5 rounded-lg border border-border/70 bg-muted/55 px-4 py-3">
+          <div className="rounded-lg border border-border/70 bg-muted/55 px-4 py-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Cash available</span>
               <span className="text-sm font-semibold text-primary">{formatCurrency(cashBalance)}</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card
+        className={cn(
+          "relative overflow-visible",
+          openMetric !== null && "z-40 shadow-md ring-1 ring-border/40",
+        )}
+      >
+        <CardContent className="overflow-visible p-8">
+          <HealthRing score={healthScore} />
+          <div className="mt-7 grid grid-cols-2 gap-3 overflow-visible sm:grid-cols-4">
+            <PlanMetricDropdown
+              open={openMetric === "profile"}
+              triggerLabel="Investor profile"
+              triggerText={profile}
+              onOpenChange={(next) => setOpenMetric(next ? "profile" : null)}
+            >
+              {PROFILE_CHOICES.map((opt) => (
+                <button
+                  key={opt.value}
+                  className={cn(
+                    "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                    opt.value === profile && "bg-primary/10 font-semibold text-primary",
+                  )}
+                  role="option"
+                  type="button"
+                  onClick={() => {
+                    updateProfileSettings({ profile: opt.value })
+                    setOpenMetric(null)
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </PlanMetricDropdown>
+            <PlanMetricDropdown
+              open={openMetric === "timeline"}
+              triggerLabel="Investment timeline"
+              triggerText={TIMELINE_CHOICES.find((t) => t.value === timeline)?.label ?? timeline}
+              onOpenChange={(next) => setOpenMetric(next ? "timeline" : null)}
+            >
+              {TIMELINE_CHOICES.map((opt) => (
+                <button
+                  key={opt.value}
+                  className={cn(
+                    "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                    opt.value === timeline && "bg-primary/10 font-semibold text-primary",
+                  )}
+                  role="option"
+                  type="button"
+                  onClick={() => {
+                    updateProfileSettings({ timeline: opt.value })
+                    setOpenMetric(null)
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </PlanMetricDropdown>
+            <PlanMetricDropdown
+              open={openMetric === "goal"}
+              triggerLabel="Goal"
+              triggerText={goalChipLabel(goal)}
+              onOpenChange={(next) => setOpenMetric(next ? "goal" : null)}
+            >
+              {GOAL_CHOICES.map((opt) => (
+                <button
+                  key={opt.value}
+                  className={cn(
+                    "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                    opt.value === goal && "bg-primary/10 font-semibold text-primary",
+                  )}
+                  role="option"
+                  type="button"
+                  onClick={() => {
+                    updateProfileSettings({ goal: opt.value })
+                    setOpenMetric(null)
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </PlanMetricDropdown>
+            <PlanMetricDropdown
+              menuRole="none"
+              open={openMetric === "monthly"}
+              triggerLabel="Monthly contribution"
+              triggerText={`${formatCurrency(monthlyContribution)}/mo`}
+              onOpenChange={(next) => {
+                if (next) {
+                  setMonthlyInputDraft(
+                    monthlyContribution > 0 ? String(monthlyContribution) : "",
+                  )
+                }
+                setOpenMetric(next ? "monthly" : null)
+              }}
+            >
+              <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Quick amounts
+              </p>
+              {monthlyOptions.map((amount) => (
+                <button
+                  key={amount}
+                  className={cn(
+                    "flex w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                    amount === monthlyContribution && "bg-primary/10 font-semibold text-primary",
+                  )}
+                  type="button"
+                  onClick={() => {
+                    updateProfileSettings({ monthlyContribution: amount })
+                    setOpenMetric(null)
+                  }}
+                >
+                  {formatCurrency(amount)}/mo
+                </button>
+              ))}
+              <div className="mx-2 my-2 border-t border-border" />
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Custom amount
+              </p>
+              <div className="px-3 pb-2">
+                <label className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 px-2 focus-within:ring-2 focus-within:ring-ring/30">
+                  <span className="pl-1 text-xs font-semibold text-muted-foreground">$</span>
+                  <input
+                    className="min-w-0 flex-1 bg-transparent py-2 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
+                    inputMode="decimal"
+                    placeholder="0"
+                    type="text"
+                    autoComplete="off"
+                    value={monthlyInputDraft}
+                    onChange={(event) => {
+                      let next = event.target.value.replace(/[^\d.]/g, "")
+                      const dot = next.indexOf(".")
+                      if (dot !== -1) {
+                        next = `${next.slice(0, dot + 1)}${next.slice(dot + 1).replace(/\./g, "")}`
+                      }
+                      setMonthlyInputDraft(next)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return
+                      event.preventDefault()
+                      commitMonthlyFromDraft()
+                    }}
+                  />
+                  <span className="pr-1 text-xs font-semibold text-muted-foreground">/mo</span>
+                </label>
+                <button
+                  className="mt-2 w-full rounded-lg bg-primary py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  type="button"
+                  onClick={commitMonthlyFromDraft}
+                >
+                  Apply
+                </button>
+              </div>
+            </PlanMetricDropdown>
           </div>
         </CardContent>
       </Card>
@@ -283,6 +631,11 @@ export function DashboardPage() {
           <Badge variant="outline">{holdings.length} positions</Badge>
         </CardHeader>
         <CardContent className="space-y-3">
+          {holdings.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border/80 bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
+              No holdings yet. Add positions from the Stocks tab when you&apos;re ready.
+            </p>
+          ) : null}
           {holdings.map((holding) => {
             const positive = holding.change >= 0
             const value = getHoldingValue(holding)
@@ -351,9 +704,7 @@ export function DashboardPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">Suggested next move</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              {nextMoveByProfile[profile]}
-            </p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{suggestedNextMove}</p>
           </div>
         </CardContent>
       </Card>
