@@ -82,7 +82,7 @@ export function AppShell() {
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-[820px] px-5 pb-20 pt-[112px]">
+      <main className="mx-auto w-full max-w-[980px] px-5 pb-20 pt-[112px]">
         <Outlet />
       </main>
     </div>
