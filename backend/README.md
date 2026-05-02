@@ -1,6 +1,6 @@
-# Clarity Backend
+# Clarity backend
 
-FastAPI backend for the Clarity investing app.
+FastAPI service for stock data and AI-assisted Learn / Scenarios copy.
 
 ## Setup
 
@@ -17,26 +17,27 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-The API runs on `http://127.0.0.1:8000`.
+Serves at `http://127.0.0.1:8000`.
 
 ## Endpoints
 
-- `GET /health`
-- `POST /ai/learn`
-- `GET /stock/{ticker}`
-- `GET /stock/{ticker}/history?period=1mo`
-- `GET /stocks/batch?tickers=AAPL,GOOGL,TSLA`
+| Method | Path | Description |
+|--------|------|----------------|
+| `GET` | `/health` | Liveness |
+| `POST` | `/ai/learn` | Answer a natural-language investing question (Ollama) |
+| `POST` | `/ai/scenario-explain` | Explain a scenario for the current portfolio summary |
+| `GET` | `/stock/{ticker}` | Quote snapshot |
+| `GET` | `/stock/{ticker}/history` | Historical series (`period` query, e.g. `1mo`) |
+| `GET` | `/stocks/batch` | Batch quotes (`tickers` query) |
 
 ## Ollama
-
-The AI tutor uses Ollama locally.
 
 ```bash
 ollama pull phi4:14b
 ollama serve
 ```
 
-Defaults:
+Typical env (see `main.py` / `routes/ai.py` for exact names):
 
 - `OLLAMA_BASE_URL=http://127.0.0.1:11434`
 - `OLLAMA_MODEL=phi4:14b`
