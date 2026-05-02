@@ -57,12 +57,19 @@ function formatCompactCurrency(value: number) {
   }).format(value)
 }
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
 export function ScenariosPage() {
   const { holdings, cashBalance, monthlyContribution, profile, timeline } = usePortfolioStore()
   const startingValue = getPortfolioValue(holdings, cashBalance)
   const years = timelineYears[timeline]
   const baselineReturn = annualReturnByProfile[profile]
-  const optimizedMonthlyContribution = monthlyContribution + 300
   const optimizedReturn = baselineReturn + 0.012
   const projection = useMemo(
     () =>
@@ -71,21 +78,27 @@ export function ScenariosPage() {
         baseline:
           index === 0
             ? Math.round(startingValue)
-            : projectValue(startingValue, monthlyContribution, baselineReturn, index),
+            : projectValue(startingValue, 0, baselineReturn, index),
         optimized:
           index === 0
             ? Math.round(startingValue)
-            : projectValue(startingValue, optimizedMonthlyContribution, optimizedReturn, index),
+            : projectValue(startingValue, monthlyContribution, optimizedReturn, index),
       })),
-    [baselineReturn, monthlyContribution, optimizedMonthlyContribution, optimizedReturn, startingValue, years],
+    [baselineReturn, monthlyContribution, optimizedReturn, startingValue, years],
   )
   const finalBaseline = projection[projection.length - 1].baseline
   const finalOptimized = projection[projection.length - 1].optimized
   const scenarios = [
     {
-      title: "Add $300 monthly",
-      value: `+${formatCompactCurrency(finalOptimized - projectValue(startingValue, monthlyContribution, optimizedReturn, years))}`,
-      copy: `Expected lift over ${years} years`,
+      title:
+        monthlyContribution > 0
+          ? `Add ${formatCurrency(monthlyContribution)} monthly`
+          : "No monthly contribution",
+      value: `+${formatCompactCurrency(
+        projectValue(startingValue, monthlyContribution, optimizedReturn, years) -
+          projectValue(startingValue, 0, optimizedReturn, years),
+      )}`,
+      copy: `Uses the contribution saved on your profile`,
     },
     {
       title: `${profile} profile`,
