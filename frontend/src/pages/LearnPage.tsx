@@ -1,6 +1,9 @@
-import { BookOpen, CheckCircle2, Clock, GraduationCap } from "lucide-react"
+import { useState, type FormEvent } from "react"
+import { BookOpen, CheckCircle2, Clock, GraduationCap, Send, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { askLearnQuestion, type LearnAnswer } from "@/lib/api"
 
 const lessons = [
   {
@@ -24,6 +27,39 @@ const lessons = [
 ]
 
 export function LearnPage() {
+  const [question, setQuestion] = useState("")
+  const [answer, setAnswer] = useState<LearnAnswer | null>(null)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  async function handleAskClarity(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmedQuestion = question.trim()
+    if (!trimmedQuestion) {
+      setError("Ask a question first, even a short one.")
+      setAnswer(null)
+      return
+    }
+
+    setLoading(true)
+    setError("")
+
+    try {
+      const response = await askLearnQuestion(trimmedQuestion)
+      setAnswer(response)
+    } catch (err) {
+      setAnswer(null)
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Clarity AI is unavailable right now. Make sure the backend and Ollama are running.",
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
       <section className="space-y-3">
@@ -54,6 +90,59 @@ export function LearnPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-accent/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
+            Ask Clarity
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form className="space-y-3" onSubmit={handleAskClarity}>
+            <textarea
+              className="min-h-28 w-full resize-none rounded-lg border border-border bg-background px-4 py-3 text-sm leading-6 text-white outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+              placeholder="Ask something like: What is diversification? Why do fees matter? How do bonds reduce risk?"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5 text-muted-foreground">
+                Educational answers only. Clarity will avoid personalized buy or sell advice.
+              </p>
+              <Button disabled={loading} type="submit">
+                {loading ? "Thinking..." : "Ask"}
+                <Send className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+          </form>
+
+          {error ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+              <p className="text-sm font-semibold text-white">Clarity AI is unavailable</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{error}</p>
+            </div>
+          ) : null}
+
+          {answer ? (
+            <div className="grid gap-3">
+              {[
+                ["Answer", answer.answer],
+                ["Key takeaway", answer.takeaway],
+                ["Example", answer.example],
+              ].map(([label, copy]) => (
+                <div
+                  key={label}
+                  className="rounded-lg border border-white/[0.08] bg-white/[0.035] p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-normal text-primary">{label}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
