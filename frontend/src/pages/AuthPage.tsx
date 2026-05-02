@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight, CheckCircle2, LockKeyhole, Mail, ShieldCheck } from "lucide-react"
 import { ClarityLogo } from "@/components/ClarityLogo"
 import { Button } from "@/components/ui/button"
+import { startSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
+import { usePortfolioStore } from "@/store/portfolio"
 import heroImage from "@/assets/hero.png"
 
 type AuthMode = "create" | "login"
@@ -14,26 +16,61 @@ const trustSignals = [
   "Plain-English lessons",
 ]
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const DEMO_LOGIN_EMAIL = "demo@clarity.app"
+const DEMO_LOGIN_PASSWORD = "claritydemo1"
+
+function validateForm(email: string, password: string, mode: AuthMode): string | null {
+  const trimmedEmail = email.trim()
+  if (!trimmedEmail) return "Enter your email."
+  if (!EMAIL_RE.test(trimmedEmail)) return "Enter a valid email address."
+  if (!password) return "Enter your password."
+  if (mode === "create" && password.length < 8) {
+    return "Use at least 8 characters for your password."
+  }
+  if (mode === "login" && password.length < 8) {
+    return "Password must be at least 8 characters."
+  }
+  return null
+}
+
 function Field({
   icon: Icon,
+  invalid,
   label,
   placeholder,
   type = "text",
+  value,
+  autoComplete,
+  onChange,
 }: {
   icon: typeof Mail
+  invalid?: boolean
   label: string
   placeholder: string
   type?: string
+  value: string
+  autoComplete?: string
+  onChange: (value: string) => void
 }) {
   return (
     <label className="block">
       <span className="text-xs font-semibold uppercase text-muted-foreground">{label}</span>
-      <span className="mt-2 flex h-11 items-center gap-3 rounded-md border border-input bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-4 focus-within:ring-ring/20">
+      <span
+        className={cn(
+          "mt-2 flex h-11 items-center gap-3 rounded-md border bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-4 focus-within:ring-ring/20",
+          invalid ? "border-destructive" : "border-input",
+        )}
+      >
         <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <input
+          autoComplete={autoComplete}
+          aria-invalid={invalid}
           className="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
           placeholder={placeholder}
           type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
         />
       </span>
     </label>
@@ -42,12 +79,39 @@ function Field({
 
 export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("create")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [formError, setFormError] = useState("")
   const navigate = useNavigate()
+  const resetOnboarding = usePortfolioStore((state) => state.resetOnboarding)
+
+  function setModeAndClearError(next: AuthMode) {
+    setMode(next)
+    setFormError("")
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    navigate("/onboarding")
+    const message = validateForm(email, password, mode)
+    if (message) {
+      setFormError(message)
+      return
+    }
+
+    setFormError("")
+    if (mode === "create") {
+      startSession("create")
+      resetOnboarding()
+      navigate("/onboarding")
+      return
+    }
+
+    startSession("login")
+    const onboarded = usePortfolioStore.getState().onboarded
+    navigate(onboarded ? "/dashboard" : "/onboarding")
   }
+
+  const showFieldError = Boolean(formError)
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -65,7 +129,7 @@ export function AuthPage() {
               )}
               key={item}
               type="button"
-              onClick={() => setMode(item)}
+              onClick={() => setModeAndClearError(item)}
             >
               {item}
             </button>
@@ -87,14 +151,59 @@ export function AuthPage() {
             workspace.
           </p>
 
-          <form className="mt-7 rounded-lg border border-border bg-card p-5 shadow-panel" onSubmit={handleSubmit}>
+          <form className="mt-7 rounded-lg border border-border bg-card p-5 shadow-panel" onSubmit={handleSubmit} noValidate>
             <div className="grid gap-4">
-              <Field icon={Mail} label="Email" placeholder="you@example.com" type="email" />
-              <Field icon={LockKeyhole} label="Password" placeholder="8+ characters" type="password" />
+              <Field
+                autoComplete="email"
+                icon={Mail}
+                invalid={showFieldError}
+                label="Email"
+                placeholder="you@example.com"
+                type="email"
+                value={email}
+                onChange={(value) => {
+                  setEmail(value)
+                  setFormError("")
+                }}
+              />
+              <Field
+                autoComplete={mode === "create" ? "new-password" : "current-password"}
+                icon={LockKeyhole}
+                invalid={showFieldError}
+                label="Password"
+                placeholder={mode === "create" ? "At least 8 characters" : "Your password"}
+                type="password"
+                value={password}
+                onChange={(value) => {
+                  setPassword(value)
+                  setFormError("")
+                }}
+              />
             </div>
 
-            <Button className="mt-5 w-full" size="lg" type="submit">
-              {mode === "create" ? "Enter demo account" : "Continue to app"}
+            {formError ? (
+              <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive" role="alert">
+                {formError}
+              </p>
+            ) : null}
+
+            {mode === "login" ? (
+              <Button
+                className="mt-4 w-full"
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setEmail(DEMO_LOGIN_EMAIL)
+                  setPassword(DEMO_LOGIN_PASSWORD)
+                  setFormError("")
+                }}
+              >
+                Use demo login
+              </Button>
+            ) : null}
+
+            <Button className="mt-5 w-full" disabled={!email.trim() || !password} size="lg" type="submit">
+              {mode === "create" ? "Create account and continue" : "Sign in"}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Button>
           </form>

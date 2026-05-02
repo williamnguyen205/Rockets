@@ -1,37 +1,102 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react"
 import { ClarityLogo } from "@/components/ClarityLogo"
 import { Button } from "@/components/ui/button"
+import { endSession, getAuthEntry } from "@/lib/session"
 import { cn } from "@/lib/utils"
 import {
-  type DipReactionOption,
-  type GoalOption,
-  type HorizonOption,
-  deriveProfile,
-  dipChoices,
-  displayGoal,
-  goalChoices,
-  horizonChoices,
-  horizonToTimeline,
-  readOnboarding,
-  writeOnboarding,
-} from "@/lib/onboarding"
-import { type InvestorProfile, usePortfolioStore } from "@/store/portfolio"
+  type InvestmentTimeline,
+  type InvestorProfile,
+  usePortfolioStore,
+} from "@/store/portfolio"
 
-type Step = 0 | 1 | 2 | 3 | 4
-
-function dipSummaryLabel(option: DipReactionOption) {
-  if (option === "calm") return "Mostly calm, likely to wait it out"
-  if (option === "worried") return "Pretty worried, watching closely"
-  return "Would want out to protect what's left"
+type TimelineOption = {
+  label: string
+  value: InvestmentTimeline
 }
 
-function postureDescription(profile: InvestorProfile) {
-  const rest =
-    "We combine your timeline, goal, and comfort with volatility. Scenarios and rebalancing tips will use this as a starting point."
-  return { label: profile, rest }
+type ProfileOption = {
+  label: string
+  blurb: string
+  value: InvestorProfile
 }
+
+type GoalOption = {
+  label: string
+  value: string
+}
+
+type ContributionChip = {
+  label: string
+  value: number
+}
+
+type OnboardingLocationState = {
+  retake?: boolean
+}
+
+const timelineOptions: TimelineOption[] = [
+  { label: "Within the next 1-3 years", value: "1-3 years" },
+  { label: "About 3-5 years", value: "3-5 years" },
+  { label: "5-10 years", value: "5-10 years" },
+  { label: "More than 10 years", value: "10+ years" },
+]
+
+const profileOptions: ProfileOption[] = [
+  {
+    label: "I'd panic and want to sell",
+    blurb: "We'll lean toward steadier mixes that move less day to day.",
+    value: "Conservative",
+  },
+  {
+    label: "I'd be uncomfortable but ride it out",
+    blurb: "A balanced mix of growth and stability fits this comfort level.",
+    value: "Balanced",
+  },
+  {
+    label: "I'd see it as a normal bump",
+    blurb: "More growth assets, with the patience to ride out volatility.",
+    value: "Growth",
+  },
+  {
+    label: "I'd consider buying more",
+    blurb: "An aggressive mix that leans into long-term opportunity.",
+    value: "Aggressive",
+  },
+]
+
+const goalOptions: GoalOption[] = [
+  { label: "Buying a home", value: "Buying a home" },
+  { label: "Retirement", value: "Retirement" },
+  { label: "Wealth growth", value: "Wealth Growth" },
+  { label: "A big purchase, like a car, wedding, or education", value: "Big purchase" },
+  { label: "Other or not sure yet", value: "Exploring" },
+]
+
+const contributionChips: ContributionChip[] = [
+  { label: "$0", value: 0 },
+  { label: "$50", value: 50 },
+  { label: "$200", value: 200 },
+  { label: "$500", value: 500 },
+  { label: "$1,000", value: 1000 },
+]
+
+const stepTitles = [
+  "When do you think you'll need this money?",
+  "How would you react to a sharp market drop?",
+  "What are you mainly investing for?",
+  "How much can you set aside each month?",
+  "Here is the plan we'll start with.",
+]
+
+const stepHints = [
+  "There are no wrong answers. This shapes how cautious or growth-leaning your default plan is.",
+  "Be honest with yourself. Your gut reaction tells us how much price movement you can sit through.",
+  "We use this to give your dashboard, scenarios, and tutor the right context.",
+  "Even small amounts add up. Pick what feels comfortable; you can change it any time.",
+  "You can tweak any of this later from Account or Scenarios.",
+]
 
 function StepShell({
   eyebrow,
@@ -68,7 +133,7 @@ function ChoiceButton({
   return (
     <button
       className={cn(
-        "flex w-full items-center justify-between gap-4 rounded-md border px-4 py-3 text-left text-sm font-semibold transition-colors",
+        "flex w-full items-start justify-between gap-4 rounded-md border px-4 py-3 text-left transition-colors",
         active
           ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-card text-foreground hover:border-accent hover:bg-muted/45",
@@ -76,8 +141,8 @@ function ChoiceButton({
       type="button"
       onClick={onClick}
     >
-      <span>{children}</span>
-      {active ? <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" /> : null}
+      <span className="min-w-0 flex-1">{children}</span>
+      {active ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : null}
     </button>
   )
 }
@@ -85,52 +150,71 @@ function ChoiceButton({
 export function OnboardingPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const retake = Boolean((location.state as { retake?: boolean } | null)?.retake)
-  const snapshot = readOnboarding()
+  const completeOnboarding = usePortfolioStore((state) => state.completeOnboarding)
+  const storedProfile = usePortfolioStore((state) => state.profile)
+  const storedTimeline = usePortfolioStore((state) => state.timeline)
+  const storedGoal = usePortfolioStore((state) => state.goal)
+  const storedMonthly = usePortfolioStore((state) => state.monthlyContribution)
 
-  const applyOnboardingResult = usePortfolioStore((s) => s.applyOnboardingResult)
-
-  const [step, setStep] = useState<Step>(0)
-  const [goal, setGoal] = useState<GoalOption | null>(null)
-  const [goalOther, setGoalOther] = useState("")
-  const [horizon, setHorizon] = useState<HorizonOption | null>(null)
-  const [dipReaction, setDipReaction] = useState<DipReactionOption | null>(null)
-
-  useEffect(() => {
-    if (snapshot && !retake) {
-      navigate("/dashboard", { replace: true })
-    }
-  }, [snapshot, retake, navigate])
-
-  const profile = useMemo(() => {
-    if (horizon === null || dipReaction === null) return null
-    return deriveProfile(horizon, dipReaction)
-  }, [horizon, dipReaction])
-
-  function finish() {
-    if (goal === null || horizon === null || dipReaction === null) return
-    const resolvedProfile = deriveProfile(horizon, dipReaction)
-    const goalText = displayGoal(goal, goalOther)
-    const timeline = horizonToTimeline(horizon)
-    applyOnboardingResult({ goal: goalText, profile: resolvedProfile, timeline })
-    writeOnboarding({
-      goal,
-      goalOther: goalOther.trim(),
-      horizon,
-      dipReaction,
-      completedAt: new Date().toISOString(),
-    })
-    navigate("/dashboard", { replace: true })
-  }
-
-  function canAdvanceFromGoal() {
-    if (goal === null) return false
-    if (goal !== "Other") return true
-    return goalOther.trim().length > 0
-  }
+  const [step, setStep] = useState(0)
+  const [timeline, setTimeline] = useState<InvestmentTimeline>(storedTimeline)
+  const [profile, setProfile] = useState<InvestorProfile>(storedProfile)
+  const [goal, setGoal] = useState<string>(storedGoal)
+  const [monthlyContribution, setMonthlyContribution] = useState<number>(storedMonthly)
+  const [contributionInput, setContributionInput] = useState<string>(
+    storedMonthly ? String(storedMonthly) : "",
+  )
 
   const totalSteps = 5
   const progress = ((step + 1) / totalSteps) * 100
+  const isRetake = (location.state as OnboardingLocationState | null)?.retake === true
+
+  function goNext() {
+    setStep((current) => Math.min(current + 1, totalSteps - 1))
+  }
+
+  function goBack() {
+    if (step > 0) {
+      setStep((current) => current - 1)
+      return
+    }
+
+    if (isRetake) {
+      navigate("/account", { replace: true })
+      return
+    }
+
+    const entry = getAuthEntry()
+    endSession()
+    navigate(entry === "login" ? "/login" : "/create", { replace: true })
+  }
+
+  function pickContribution(value: number) {
+    setMonthlyContribution(value)
+    setContributionInput(value ? String(value) : "0")
+  }
+
+  function handleContributionInput(raw: string) {
+    setContributionInput(raw)
+    const parsed = Math.max(0, Math.floor(Number(raw) || 0))
+    setMonthlyContribution(parsed)
+  }
+
+  function finish() {
+    completeOnboarding({ profile, timeline, goal, monthlyContribution })
+    navigate("/dashboard")
+  }
+
+  const goalLabel = goalOptions.find((option) => option.value === goal)?.label ?? "Wealth growth"
+  const profileBlurb = profileOptions.find((option) => option.value === profile)?.blurb ?? ""
+  const backLabel =
+    step > 0
+      ? "Back"
+      : isRetake
+        ? "Back to settings"
+        : getAuthEntry() === "login"
+          ? "Back to sign in"
+          : "Back to create account"
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -148,154 +232,143 @@ export function OnboardingPage() {
           <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
         </div>
 
-        {step === 0 ? (
-          <StepShell
-            eyebrow="Investor profile"
-            title="Set up a plan that matches your actual comfort level."
-            copy="A short questionnaire tunes your dashboard, target allocation, and scenario suggestions. No jargon test, just practical defaults you can change later."
-          >
-            <Button size="lg" type="button" onClick={() => setStep(1)}>
-              Continue
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </StepShell>
-        ) : null}
-
-        {step === 1 ? (
-          <StepShell
-            eyebrow="Goal"
-            title="What are you investing for?"
-            copy="Choose the goal that fits best right now. This gives the app context for risk and timeline tradeoffs."
-          >
+        <StepShell eyebrow="Guided setup" title={stepTitles[step]} copy={stepHints[step]}>
+          {step === 0 ? (
             <div className="grid gap-3">
-              {goalChoices.map((choice) => (
+              {timelineOptions.map((option) => (
                 <ChoiceButton
-                  key={choice.value}
-                  active={goal === choice.value}
-                  onClick={() => setGoal(choice.value)}
+                  key={option.value}
+                  active={timeline === option.value}
+                  onClick={() => setTimeline(option.value)}
                 >
-                  {choice.label}
+                  <span className="text-sm font-semibold">{option.label}</span>
                 </ChoiceButton>
               ))}
             </div>
-            {goal === "Other" ? (
-              <label className="mt-4 block space-y-2">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">Your goal</span>
-                <input
-                  className="h-11 w-full rounded-md border border-input bg-card px-3 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-ring/20"
-                  placeholder="Describe your goal in plain words"
-                  value={goalOther}
-                  onChange={(event) => setGoalOther(event.target.value)}
-                />
+          ) : null}
+
+          {step === 1 ? (
+            <div className="grid gap-3">
+              {profileOptions.map((option) => (
+                <ChoiceButton
+                  key={option.value}
+                  active={profile === option.value}
+                  onClick={() => setProfile(option.value)}
+                >
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  <span className={cn("mt-1 block text-sm", profile === option.value ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                    {option.blurb}
+                  </span>
+                </ChoiceButton>
+              ))}
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div className="grid gap-3">
+              {goalOptions.map((option) => (
+                <ChoiceButton
+                  key={option.value}
+                  active={goal === option.value}
+                  onClick={() => setGoal(option.value)}
+                >
+                  <span className="text-sm font-semibold">{option.label}</span>
+                </ChoiceButton>
+              ))}
+            </div>
+          ) : null}
+
+          {step === 3 ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {contributionChips.map((chip) => (
+                  <button
+                    key={chip.value}
+                    className={cn(
+                      "rounded-md border px-4 py-2 text-sm font-semibold transition-colors",
+                      monthlyContribution === chip.value
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-foreground hover:border-accent hover:bg-muted/45",
+                    )}
+                    type="button"
+                    onClick={() => pickContribution(chip.value)}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+              <label className="block">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">
+                  Or enter a custom monthly amount
+                </span>
+                <span className="mt-2 flex h-11 items-center gap-3 rounded-md border border-input bg-card px-3 transition-colors focus-within:border-primary focus-within:ring-4 focus-within:ring-ring/20">
+                  <span className="text-sm font-semibold text-muted-foreground">$</span>
+                  <input
+                    className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-foreground outline-none placeholder:text-muted-foreground"
+                    inputMode="numeric"
+                    min={0}
+                    placeholder="0"
+                    type="number"
+                    value={contributionInput}
+                    onChange={(event) => handleContributionInput(event.target.value)}
+                  />
+                  <span className="text-xs font-semibold uppercase text-muted-foreground">/ month</span>
+                </span>
               </label>
-            ) : null}
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button type="button" variant="ghost" onClick={() => setStep(0)}>
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                Back
-              </Button>
-              <Button disabled={!canAdvanceFromGoal()} type="button" onClick={() => setStep(2)}>
+            </div>
+          ) : null}
+
+          {step === 4 ? (
+            <div className="space-y-5">
+              <div className="rounded-lg border border-border bg-muted/45 p-5">
+                <p className="text-sm font-medium leading-7 text-muted-foreground">
+                  We'll set up a <span className="font-semibold text-foreground">{profile}</span> plan aimed at{" "}
+                  <span className="font-semibold text-foreground">{goalLabel.toLowerCase()}</span> over a{" "}
+                  <span className="font-semibold text-foreground">{timeline.toLowerCase()}</span> timeline, with about{" "}
+                  <span className="font-semibold text-foreground">
+                    ${monthlyContribution.toLocaleString()}/month
+                  </span>{" "}
+                  in contributions.
+                </p>
+                {profileBlurb ? (
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{profileBlurb}</p>
+                ) : null}
+              </div>
+
+              <dl className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+                {[
+                  ["Profile", profile],
+                  ["Timeline", timeline],
+                  ["Goal", goalLabel],
+                  ["Monthly", `$${monthlyContribution.toLocaleString()}`],
+                ].map(([label, value]) => (
+                  <div key={label} className="bg-card p-4">
+                    <dt className="text-xs font-semibold uppercase text-muted-foreground">{label}</dt>
+                    <dd className="mt-2 text-sm font-semibold leading-6 text-foreground">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : null}
+
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-border pt-5">
+            <Button type="button" variant="ghost" onClick={goBack}>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              {backLabel}
+            </Button>
+            {step < totalSteps - 1 ? (
+              <Button type="button" onClick={goNext}>
                 Continue
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>
-            </div>
-          </StepShell>
-        ) : null}
-
-        {step === 2 ? (
-          <StepShell
-            eyebrow="Timeline"
-            title="When will you need this money?"
-            copy="Approximate timing is enough. Short horizons need more stability; longer horizons can usually tolerate more movement."
-          >
-            <div className="grid gap-3">
-              {horizonChoices.map((choice) => (
-                <ChoiceButton
-                  key={choice.value}
-                  active={horizon === choice.value}
-                  onClick={() => setHorizon(choice.value)}
-                >
-                  {choice.label}
-                </ChoiceButton>
-              ))}
-            </div>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button type="button" variant="ghost" onClick={() => setStep(1)}>
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                Back
-              </Button>
-              <Button disabled={horizon === null} type="button" onClick={() => setStep(3)}>
-                Continue
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </div>
-          </StepShell>
-        ) : null}
-
-        {step === 3 ? (
-          <StepShell
-            eyebrow="Risk tolerance"
-            title="If investments dropped about 15%, what would you do?"
-            copy="Your honest reaction helps Clarity avoid a portfolio you would abandon during normal market stress."
-          >
-            <div className="grid gap-3">
-              {dipChoices.map((choice) => (
-                <ChoiceButton
-                  key={choice.value}
-                  active={dipReaction === choice.value}
-                  onClick={() => setDipReaction(choice.value)}
-                >
-                  {choice.label}
-                </ChoiceButton>
-              ))}
-            </div>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button type="button" variant="ghost" onClick={() => setStep(2)}>
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                Back
-              </Button>
-              <Button disabled={dipReaction === null} type="button" onClick={() => setStep(4)}>
-                Continue
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </div>
-          </StepShell>
-        ) : null}
-
-        {step === 4 && goal !== null && horizon !== null && dipReaction !== null && profile !== null ? (
-          <StepShell
-            eyebrow="Starting posture"
-            title="Here is how Clarity will start with you."
-            copy="This is a working profile, not a permanent label. You can retake the questionnaire from account settings."
-          >
-            <dl className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
-              {[
-                ["Goal", displayGoal(goal, goalOther)],
-                ["Time horizon", horizon],
-                ["Market dip reaction", dipSummaryLabel(dipReaction)],
-                [
-                  "Profile",
-                  `${postureDescription(profile).label}. ${postureDescription(profile).rest}`,
-                ],
-              ].map(([label, value]) => (
-                <div key={label} className="bg-card p-4">
-                  <dt className="text-xs font-semibold uppercase text-muted-foreground">{label}</dt>
-                  <dd className="mt-2 text-sm font-semibold leading-6 text-foreground">{value}</dd>
-                </div>
-              ))}
-            </dl>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button type="button" variant="ghost" onClick={() => setStep(3)}>
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                Back
-              </Button>
+            ) : (
               <Button type="button" onClick={finish}>
-                Go to dashboard
+                Start using Clarity
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Button>
-            </div>
-          </StepShell>
-        ) : null}
+            )}
+          </div>
+        </StepShell>
       </main>
     </div>
   )

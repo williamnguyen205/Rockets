@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ClarityIcon } from "@/components/ClarityLogo"
-import { readOnboarding } from "@/lib/onboarding"
 import { cn } from "@/lib/utils"
 import { usePortfolioStore } from "@/store/portfolio"
 
@@ -126,11 +125,13 @@ export function AccountPage() {
   const {
     profile,
     timeline,
+    goal,
     monthlyContribution,
     healthScore,
     allocation,
     cashBalance,
     holdings,
+    resetOnboarding,
   } = usePortfolioStore()
   const initialForm: AccountForm = {
     fullName: "Clarity User",
@@ -247,10 +248,10 @@ export function AccountPage() {
       profile: {
         investorType: profile,
         timeline,
+        goal,
         monthlyContribution,
         healthScore,
       },
-      onboarding: readOnboarding(),
       preferences,
       portfolio: {
         cashBalance,
@@ -345,7 +346,10 @@ export function AccountPage() {
               className="w-full sm:w-auto"
               type="button"
               variant="secondary"
-              onClick={() => navigate("/onboarding", { state: { retake: true } })}
+              onClick={() => {
+                resetOnboarding()
+                navigate("/onboarding", { state: { retake: true } })
+              }}
             >
               Retake questionnaire
             </Button>

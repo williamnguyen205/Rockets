@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, NavLink, Outlet } from "react-router-dom"
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import {
   BarChart3,
   BookOpen,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { ClarityIcon } from "@/components/ClarityLogo"
 import { ClarityTutorProvider } from "@/components/ClarityTutor"
+import { endSession } from "@/lib/session"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -36,6 +37,13 @@ export function AppShell() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const accountMenuRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    setAccountMenuOpen(false)
+    endSession()
+    navigate("/login", { replace: true })
+  }
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", shouldUseDarkTheme())
@@ -51,6 +59,7 @@ export function AppShell() {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setAccountMenuOpen(false)
+        setMobileNavOpen(false)
       }
     }
 
@@ -117,13 +126,14 @@ export function AppShell() {
                 <Settings className="h-3.5 w-3.5" aria-hidden="true" />
                 Settings
               </Link>
-              <Link
+              <button
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                to="/"
+                type="button"
+                onClick={handleLogout}
               >
                 <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                 Logout
-              </Link>
+              </button>
             </div>
           </div>
         </aside>
@@ -173,6 +183,14 @@ export function AppShell() {
                   <Settings className="h-4 w-4" aria-hidden="true" />
                   Account
                 </NavLink>
+                <button
+                  className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground"
+                  type="button"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
+                  Logout
+                </button>
               </nav>
             ) : null}
           </header>
@@ -215,15 +233,15 @@ export function AppShell() {
                     <Settings className="h-4 w-4 text-accent" aria-hidden="true" />
                     Settings
                   </Link>
-                  <Link
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                  <button
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
                     role="menuitem"
-                    to="/"
-                    onClick={() => setAccountMenuOpen(false)}
+                    type="button"
+                    onClick={handleLogout}
                   >
                     <LogOut className="h-4 w-4 text-accent" aria-hidden="true" />
                     Logout
-                  </Link>
+                  </button>
                 </div>
               ) : null}
             </div>
