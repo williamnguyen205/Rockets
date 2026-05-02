@@ -49,6 +49,17 @@ export type ScenarioExplainAnswer = {
   theMove: string
 }
 
+export type ScenarioSimulationAnswer = {
+  title: string
+  summary: string
+  estimatedReturnAdjustmentPp: number
+  estimatedPortfolioImpactPct: number
+  confidence: string
+  assumptions: string[]
+  recommendedMoves: string[]
+  riskNotes: string[]
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -94,6 +105,19 @@ export async function explainScenarioAdjustment(payload: {
   suggestedTrade: string
 }) {
   return fetchJson<ScenarioExplainAnswer>("/ai/scenario-explain", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function simulateScenario(payload: {
+  scenario: string
+  portfolioSummary: ScenarioPortfolioSummaryPayload
+}) {
+  return fetchJson<ScenarioSimulationAnswer>("/ai/scenario-simulate", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

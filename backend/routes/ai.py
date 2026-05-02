@@ -54,6 +54,22 @@ class ScenarioExplainResponse(BaseModel):
     theMove: str
 
 
+class ScenarioSimulationRequest(BaseModel):
+    scenario: str = Field(..., min_length=4, max_length=1200)
+    portfolioSummary: PortfolioSummaryPayload
+
+
+class ScenarioSimulationResponse(BaseModel):
+    title: str
+    summary: str
+    estimatedReturnAdjustmentPp: float = Field(..., ge=-15, le=15)
+    estimatedPortfolioImpactPct: float = Field(..., ge=-60, le=60)
+    confidence: str
+    assumptions: list[str] = Field(..., min_length=2, max_length=5)
+    recommendedMoves: list[str] = Field(..., min_length=2, max_length=5)
+    riskNotes: list[str] = Field(..., min_length=2, max_length=5)
+
+
 def _build_learn_prompt(
     question: str,
     module_title: str | None = None,
@@ -332,3 +348,172 @@ async def _ask_ollama_scenario(request: ScenarioExplainRequest) -> ScenarioExpla
 @router.post("/scenario-explain", response_model=ScenarioExplainResponse)
 async def explain_scenario_adjustment(request: ScenarioExplainRequest) -> ScenarioExplainResponse:
     return await _ask_ollama_scenario(request)
+
+
+def _build_scenario_simulation_prompt(request: ScenarioSimulationRequest) -> str:
+    holdings_lines = "\n".join(
+        f"  - {h.symbol} ({h.name}): about {h.pctRounded}% of portfolio"
+        for h in request.portfolioSummary.topHoldings
+    ) or "  - (no holdings listed)"
+
+    portfolio_block = f"""
+Portfolio snapshot:
+- Total value: ${request.portfolioSummary.totalValueUsd:,.0f}
+- Stocks: {request.portfolioSummary.stocksPct}%
+- Mutual funds: {request.portfolioSummary.fundsPct}%
+- Cash: {request.portfolioSummary.cashPct}%
+- Investor profile: {request.portfolioSummary.profile}
+- Timeline: {request.portfolioSummary.timeline}
+- Goal: {request.portfolioSummary.goal}
+- Monthly contribution: ${request.portfolioSummary.monthlyContribution:,.0f}
+- Larger positions:
+{holdings_lines}
+""".strip()
+
+    return f"""
+You are Clarity's market-simulation assistant for beginner investors.
+
+The user will type any what-if scenario. Convert it into an educational portfolio stress test. Do not predict the
+future with certainty. Do not recommend a specific security. Do not provide legal, tax, or personal financial advice.
+
+USER SCENARIO:
+{request.scenario}
+
+{portfolio_block}
+
+TASK:
+1. Give the scenario a concise title.
+2. Summarize what the simulation is testing in plain English.
+3. Estimate how the scenario might change the portfolio's annual return assumption in percentage points.
+   Use "estimatedReturnAdjustmentPp" where -2.5 means subtract 2.5 percentage points from the current annual assumption.
+4. Estimate the near-term portfolio impact as a percent of total value using "estimatedPortfolioImpactPct".
+   Negative means a drawdown/stress; positive means possible upside.
+5. Give confidence as "Low", "Medium", or "High".
+6. List 2-5 assumptions, 2-5 recommended moves, and 2-5 risk notes.
+
+Rules:
+- Keep every line beginner-friendly and specific to the user's scenario.
+- Use conservative estimates. For vague scenarios, choose lower confidence.
+- Mention portfolio mix and timeline where relevant.
+- Keep actions educational and non-prescriptive: "consider", "review", "stress-test", "keep a cushion".
+- Return only valid JSON with exactly these keys:
+  "title", "summary", "estimatedReturnAdjustmentPp", "estimatedPortfolioImpactPct", "confidence",
+  "assumptions", "recommendedMoves", "riskNotes".
+""".strip()
+
+
+def _parse_scenario_simulation_response(content: str) -> ScenarioSimulationResponse:
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`").removeprefix("json").strip()
+
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="The AI simulation could not be parsed. Please try again.",
+        ) from exc
+
+    return ScenarioSimulationResponse(
+        title=str(parsed.get("title", "")).strip(),
+        summary=str(parsed.get("summary", "")).strip(),
+        estimatedReturnAdjustmentPp=float(parsed.get("estimatedReturnAdjustmentPp", 0)),
+        estimatedPortfolioImpactPct=float(parsed.get("estimatedPortfolioImpactPct", 0)),
+        confidence=str(parsed.get("confidence", "Low")).strip(),
+        assumptions=[str(item).strip() for item in parsed.get("assumptions", []) if str(item).strip()],
+        recommendedMoves=[
+            str(item).strip() for item in parsed.get("recommendedMoves", []) if str(item).strip()
+        ],
+        riskNotes=[str(item).strip() for item in parsed.get("riskNotes", []) if str(item).strip()],
+    )
+
+
+async def _ask_ollama_scenario_simulation(
+    request: ScenarioSimulationRequest,
+) -> ScenarioSimulationResponse:
+    payload = {
+        "model": OLLAMA_MODEL,
+        "prompt": _build_scenario_simulation_prompt(request),
+        "stream": False,
+        "format": "json",
+        "options": {
+            "temperature": 0.45,
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            response = await client.post(f"{OLLAMA_BASE_URL}/api/generate", json=payload)
+    except httpx.ConnectError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Ollama is not running. Start it with `ollama serve` and try again.",
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Ollama took too long to simulate that scenario. Try a shorter prompt.",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to reach Ollama. Confirm it is running on http://127.0.0.1:11434.",
+        ) from exc
+
+    if response.status_code == 404:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Ollama model '{OLLAMA_MODEL}' was not found. Run `ollama pull {OLLAMA_MODEL}`.",
+        )
+
+    if response.status_code >= 500:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Ollama could not generate a simulation. Confirm the model is installed with `ollama pull {OLLAMA_MODEL}`.",
+        )
+
+    if not response.is_success:
+        raise HTTPException(
+            status_code=502,
+            detail="Unexpected Ollama response while generating the scenario simulation.",
+        )
+
+    data = response.json()
+    content = str(data.get("response", "")).strip()
+    if not content:
+        raise HTTPException(
+            status_code=502,
+            detail="Ollama returned an empty simulation. Please try again.",
+        )
+
+    parsed = _parse_scenario_simulation_response(content)
+    if (
+        not parsed.title
+        or not parsed.summary
+        or len(parsed.assumptions) < 2
+        or len(parsed.recommendedMoves) < 2
+        or len(parsed.riskNotes) < 2
+    ):
+        raise HTTPException(
+            status_code=502,
+            detail="The AI simulation was missing required fields. Please try again.",
+        )
+
+    return parsed
+
+
+@router.post("/scenario-simulate", response_model=ScenarioSimulationResponse)
+async def simulate_user_scenario(
+    request: ScenarioSimulationRequest,
+) -> ScenarioSimulationResponse:
+    scenario = request.scenario.strip()
+    if not scenario:
+        raise HTTPException(status_code=422, detail="Scenario cannot be empty.")
+
+    return await _ask_ollama_scenario_simulation(
+        ScenarioSimulationRequest(
+            scenario=scenario,
+            portfolioSummary=request.portfolioSummary,
+        ),
+    )
