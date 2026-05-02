@@ -1,6 +1,6 @@
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
-import { LogOut } from "lucide-react"
+import { LogOut, Settings } from "lucide-react"
 import { ClarityIcon } from "@/components/ClarityLogo"
 import { cn } from "@/lib/utils"
 
@@ -22,8 +22,33 @@ function shouldUseDarkTheme() {
 }
 
 export function AppShell() {
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", shouldUseDarkTheme())
+  }, [])
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setAccountMenuOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown)
+    document.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
   }, [])
 
   return (
@@ -58,26 +83,46 @@ export function AppShell() {
             ))}
           </div>
 
-          <div className="flex items-center justify-end gap-2">
-            <NavLink
-              aria-label="Account settings"
-              className={({ isActive }) =>
-                cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-xs font-semibold text-primary shadow-sm transition-colors hover:bg-secondary/40",
-                  isActive && "border-primary bg-secondary/60",
-                )
-              }
-              to="/account"
+          <div ref={accountMenuRef} className="relative flex items-center justify-end">
+            <button
+              aria-expanded={accountMenuOpen}
+              aria-haspopup="menu"
+              aria-label="Open account menu"
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-xs font-semibold text-primary shadow-sm transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/35",
+                accountMenuOpen && "border-primary bg-secondary/60",
+              )}
+              type="button"
+              onClick={() => setAccountMenuOpen((open) => !open)}
             >
               CL
-            </NavLink>
-            <Link
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-border/80 bg-card px-4 text-sm font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/35"
-              to="/"
-            >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Sign out</span>
-            </Link>
+            </button>
+
+            {accountMenuOpen ? (
+              <div
+                className="absolute right-0 top-12 z-50 w-44 overflow-hidden rounded-2xl border border-border bg-card p-1 shadow-panel"
+                role="menu"
+              >
+                <Link
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+                  role="menuitem"
+                  to="/account"
+                  onClick={() => setAccountMenuOpen(false)}
+                >
+                  <Settings className="h-4 w-4 text-primary" aria-hidden="true" />
+                  Settings
+                </Link>
+                <Link
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+                  role="menuitem"
+                  to="/"
+                  onClick={() => setAccountMenuOpen(false)}
+                >
+                  <LogOut className="h-4 w-4 text-primary" aria-hidden="true" />
+                  Logout
+                </Link>
+              </div>
+            ) : null}
           </div>
         </nav>
       </header>
