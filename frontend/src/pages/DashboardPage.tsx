@@ -73,6 +73,7 @@ function PlanMetricDropdown({
   triggerText,
   children,
   menuRole = "listbox",
+  wideMenu = false,
 }: {
   open: boolean
   onOpenChange: (next: boolean) => void
@@ -81,6 +82,7 @@ function PlanMetricDropdown({
   children: ReactNode
   /** Use "none" when the panel mixes inputs with options (e.g. monthly custom amount). */
   menuRole?: "listbox" | "none"
+  wideMenu?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -640,6 +642,7 @@ export function DashboardPage() {
                 open={openMetric === "timeline"}
                 triggerLabel="Timeline"
                 triggerText={TIMELINE_CHOICES.find((t) => t.value === timeline)?.label ?? timeline}
+                wideMenu
                 onOpenChange={(next) => setOpenMetric(next ? "timeline" : null)}
               >
                 {TIMELINE_CHOICES.map((opt) => (
@@ -664,6 +667,7 @@ export function DashboardPage() {
                 open={openMetric === "goal"}
                 triggerLabel="Goal"
                 triggerText={goalChipLabel(goal)}
+                wideMenu
                 onOpenChange={(next) => setOpenMetric(next ? "goal" : null)}
               >
                 {GOAL_CHOICES.map((opt) => (
