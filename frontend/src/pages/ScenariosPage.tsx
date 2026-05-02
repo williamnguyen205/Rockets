@@ -175,7 +175,7 @@ function ActionPlanCard({
   return (
     <button
       className={cn(
-        "rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/45 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25",
+        "flex h-full flex-col rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/45 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25",
         active ? "border-primary shadow-panel" : "border-border",
       )}
       type="button"
@@ -183,8 +183,8 @@ function ActionPlanCard({
     >
       <p className="text-xs font-semibold uppercase text-muted-foreground">{scenarioTitle}</p>
       <h3 className="mt-2 text-base font-semibold text-foreground">{plan.title}</h3>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{plan.calmingCopy}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">{plan.calmingCopy}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
         <span className="rounded-md border border-border bg-muted/45 px-2 py-1 text-xs font-semibold text-foreground">
           {primaryTrade ? formatCurrency(primaryTrade.amountUsd) : "$0"} reviewed
         </span>
@@ -218,7 +218,7 @@ function CustomScenarioCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-card p-4 transition-colors",
+        "flex h-full flex-col rounded-lg border bg-card p-4 transition-colors",
         active ? "border-primary shadow-panel" : "border-border",
       )}
     >
