@@ -98,6 +98,32 @@ export type RebalancingSuggestion = {
   rationale: string
 }
 
+export type ScenarioTradeStep = {
+  label: string
+  amountUsd: number
+  from: string
+  to: string
+  because: string
+}
+
+export type ScenarioTransparency = {
+  confidence: "High" | "Medium" | "Low"
+  estimatedTradingCostUsd: number
+  fundFeeNote: string
+  taxNote: string
+  whatCouldGoWrong: string[]
+}
+
+export type ScenarioActionPlan = {
+  title: string
+  calmingCopy: string
+  before: { stocks: number; funds: number; cash: number }
+  after: { stocks: number; funds: number; cash: number }
+  trades: ScenarioTradeStep[]
+  transparency: ScenarioTransparency
+  reviewChecklist: string[]
+}
+
 function isShortHorizon(timeline: InvestmentTimeline) {
   return timeline === "1-3 years" || timeline === "3-5 years"
 }
@@ -230,6 +256,191 @@ export function suggestRebalancingStrategy(
   return {
     bullets,
     rationale: `${comparisonRationale} We assumed a meaningful withdrawal soon, so the priority is cash you can use on your timeline while keeping the rest aligned with your goal (${s.goal}).`,
+  }
+}
+
+function clampPct(value: number) {
+  return Math.min(100, Math.max(0, Math.round(value)))
+}
+
+function normalizeMix(stocks: number, funds: number, cash: number) {
+  const roundedStocks = clampPct(stocks)
+  const roundedFunds = clampPct(funds)
+  const roundedCash = clampPct(cash)
+  const total = roundedStocks + roundedFunds + roundedCash
+  return {
+    stocks: roundedStocks,
+    funds: roundedFunds,
+    cash: Math.min(100, Math.max(0, roundedCash + (100 - total))),
+  }
+}
+
+function dollarsFromPct(totalValueUsd: number, pct: number) {
+  return Math.max(0, Math.round(totalValueUsd * (pct / 100)))
+}
+
+export function buildScenarioActionPlan(
+  scenarioId: ScenarioId,
+  s: ScenarioPortfolioSnapshot,
+): ScenarioActionPlan {
+  const target = TARGET_ALLOCATION_BY_PROFILE[s.profile]
+  const before = { stocks: s.stocksPct, funds: s.fundsPct, cash: s.cashPct }
+  const drift = getAllocationDrift(snapshotToAllocationItems(s), target)
+  const total = s.totalValueUsd
+  const topHolding = s.topHoldings[0]
+
+  if (total <= 0) {
+    return {
+      title: "Start with a practice portfolio",
+      calmingCopy: "No judgment here. The first calm move is adding sample cash or holdings so Clarity has something real to explain.",
+      before,
+      after: before,
+      trades: [],
+      transparency: {
+        confidence: "Low",
+        estimatedTradingCostUsd: 0,
+        fundFeeNote: "Fund fees depend on the fund selected. Beginner funds often publish a yearly expense ratio.",
+        taxNote: "No tax impact is estimated because there is no simulated sale yet.",
+        whatCouldGoWrong: [
+          "A blank portfolio cannot show concentration risk.",
+          "Real accounts may have fees, taxes, or restrictions this prototype does not know.",
+        ],
+      },
+      reviewChecklist: [
+        "Add practice cash or positions from the Stocks tab.",
+        "Run this scenario again once the dashboard shows holdings.",
+      ],
+    }
+  }
+
+  if (scenarioId === "market_drop_20") {
+    const trimPct = Math.min(Math.max(drift.stocks, 0), 12)
+    const cashBoost = isShortHorizon(s.timeline) ? 5 : 2
+    const moveToFunds = Math.max(0, trimPct - cashBoost)
+    const after = normalizeMix(s.stocksPct - trimPct, s.fundsPct + moveToFunds, s.cashPct + Math.min(trimPct, cashBoost))
+    const trimAmount = dollarsFromPct(total, trimPct)
+
+    return {
+      title: "Review a calmer market-drop plan",
+      calmingCopy: "This plan avoids panic-selling. It trims only the part that sits above plan and protects money that may be needed sooner.",
+      before,
+      after,
+      trades:
+        trimAmount > 0
+          ? [
+              {
+                label: topHolding
+                  ? `Trim about ${topHolding.symbol} or other above-plan stocks`
+                  : "Trim above-plan stock exposure",
+                amountUsd: trimAmount,
+                from: "Stocks",
+                to: moveToFunds > 0 ? "Mutual funds and cash" : "Cash",
+                because: `Because stocks are ${Math.max(0, Math.round(drift.stocks))} percentage points above the ${s.profile} guide, a partial trim can reduce stress without abandoning the plan.`,
+              },
+            ]
+          : [
+              {
+                label: "Keep the current mix and avoid sudden selling",
+                amountUsd: 0,
+                from: "No sale",
+                to: "Review only",
+                because: "Because your stock slice is close to target, the calmer action is checking your cash cushion before reacting.",
+              },
+            ],
+      transparency: {
+        confidence: trimAmount > 0 ? "Medium" : "High",
+        estimatedTradingCostUsd: 0,
+        fundFeeNote: "If money moves into a diversified ETF, the ongoing fund fee may be around 0.03%-0.10% per year for many broad index ETFs.",
+        taxNote: "Selling investments in a regular brokerage account may create taxes if there are gains. Confirm with a tax professional before making real trades.",
+        whatCouldGoWrong: [
+          "Markets could recover quickly after a sale, so the plan uses a modest trim instead of an all-or-nothing move.",
+          "If the money is needed sooner than expected, even diversified funds can still fall in value.",
+        ],
+      },
+      reviewChecklist: [
+        "Confirm the goal timeline still feels right.",
+        "Check whether any sale would create taxes in a real brokerage account.",
+        "Review the after mix before applying this as a practice-only rebalance.",
+      ],
+    }
+  }
+
+  if (scenarioId === "inflation_high") {
+    const excessCashPct = Math.min(Math.max(drift.cash, 0), 15)
+    const after = normalizeMix(s.stocksPct, s.fundsPct + excessCashPct, s.cashPct - excessCashPct)
+
+    return {
+      title: "Review an inflation-resilience plan",
+      calmingCopy: "Cash is useful, but too much idle cash can quietly lose buying power when prices keep rising.",
+      before,
+      after,
+      trades: [
+        {
+          label:
+            excessCashPct > 0
+              ? "Shift extra idle cash toward diversified funds"
+              : "Keep cash cushion, review fund fees",
+          amountUsd: dollarsFromPct(total, excessCashPct),
+          from: excessCashPct > 0 ? "Cash" : "No sale",
+          to: excessCashPct > 0 ? "Mutual funds" : "Review only",
+          because:
+            excessCashPct > 0
+              ? `Because cash is ${Math.round(drift.cash)} percentage points above target, only the extra cash is considered for longer-term growth.`
+              : "Because cash is not above target, the better move is staying diversified and watching fund costs.",
+        },
+      ],
+      transparency: {
+        confidence: "Medium",
+        estimatedTradingCostUsd: 0,
+        fundFeeNote: "Broad beginner funds often charge a small yearly expense ratio; Clarity shows it before a simulated buy.",
+        taxNote: "Moving cash into a fund usually has no sale tax event, but later selling that fund can create taxes in a regular brokerage account.",
+        whatCouldGoWrong: [
+          "Inflation could cool faster than expected, making extra cash feel less costly.",
+          "Funds can still lose value over shorter windows, even if they are diversified.",
+        ],
+      },
+      reviewChecklist: [
+        "Keep enough cash for bills and emergencies first.",
+        "Compare the selected fund's yearly fee.",
+        "Use only money that is not needed soon.",
+      ],
+    }
+  }
+
+  const withdrawPct = 20
+  const stockTrimPct = Math.min(Math.max(s.stocksPct - target.stocks, 0) + 6, withdrawPct)
+  const fundTrimPct = Math.max(0, withdrawPct - stockTrimPct)
+  const after = normalizeMix(s.stocksPct - stockTrimPct, s.fundsPct - fundTrimPct, s.cashPct + withdrawPct)
+
+  return {
+    title: "Review a one-year cash plan",
+    calmingCopy: "The goal is not maximum return. It is making the needed money reachable before the user is forced to sell during a bad week.",
+    before,
+    after,
+    trades: [
+      {
+        label: "Build next-year cash in stages",
+        amountUsd: dollarsFromPct(total, withdrawPct),
+        from: stockTrimPct >= fundTrimPct ? "Stocks first" : "Stocks and funds",
+        to: "Cash",
+        because: `Because about 20% may be needed next year, this sets aside roughly ${dollarsFromPct(total, withdrawPct).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })} before market timing becomes stressful.`,
+      },
+    ],
+    transparency: {
+      confidence: "High",
+      estimatedTradingCostUsd: 0,
+      fundFeeNote: "Keeping money in cash avoids fund market swings but may earn less than invested money.",
+      taxNote: "Raising cash by selling winners may create taxable gains in a regular brokerage account. Real users should confirm before selling.",
+      whatCouldGoWrong: [
+        "Holding more cash may reduce upside if markets rise.",
+        "The needed withdrawal could be larger than expected, so the plan should be revisited monthly.",
+      ],
+    },
+    reviewChecklist: [
+      "Confirm the withdrawal amount and date.",
+      "Raise cash gradually instead of waiting until the last week.",
+      "Check taxes before selling any large winning position.",
+    ],
   }
 }
 

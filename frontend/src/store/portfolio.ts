@@ -15,6 +15,10 @@ export type Holding = {
   change: number
   risk: RiskLevel
   category: HoldingCategory
+  expenseRatio?: number
+  diversification?: string
+  plainLanguageRisk?: string
+  dataSource?: string
 }
 
 export type TradeResult = {
@@ -87,12 +91,20 @@ type PortfolioState = {
     shares: number
     price: number
     change: number
+    category?: HoldingCategory
+    risk?: RiskLevel
+    expenseRatio?: number
+    diversification?: string
+    plainLanguageRisk?: string
+    dataSource?: string
   }) => TradeResult
   sellStock: (trade: {
     symbol: string
     shares: number
     price: number
   }) => TradeResult
+  addPracticeCash: (amount: number) => TradeResult
+  loadSamplePortfolio: () => TradeResult
 }
 
 function getHoldingValue(holding: Holding) {
@@ -243,7 +255,19 @@ export const usePortfolioStore = create<PortfolioState>()(
           }),
         })
       },
-      buyStock: ({ symbol, name, shares, price, change }) => {
+      buyStock: ({
+        symbol,
+        name,
+        shares,
+        price,
+        change,
+        category = "stock",
+        risk = "Medium",
+        expenseRatio,
+        diversification,
+        plainLanguageRisk,
+        dataSource,
+      }) => {
         const normalizedSymbol = symbol.trim().toUpperCase()
         const tradeValue = shares * price
 
@@ -271,7 +295,12 @@ export const usePortfolioStore = create<PortfolioState>()(
                   averageCost: totalCost / totalShares,
                   lastPrice: price,
                   change,
-                  category: "stock" as const,
+                  category,
+                  risk,
+                  expenseRatio,
+                  diversification,
+                  plainLanguageRisk,
+                  dataSource,
                 }
               })
             : [
@@ -283,8 +312,12 @@ export const usePortfolioStore = create<PortfolioState>()(
                   averageCost: price,
                   lastPrice: price,
                   change,
-                  risk: "Medium" as const,
-                  category: "stock" as const,
+                  risk,
+                  category,
+                  expenseRatio,
+                  diversification,
+                  plainLanguageRisk,
+                  dataSource,
                 },
               ]
 
@@ -338,6 +371,91 @@ export const usePortfolioStore = create<PortfolioState>()(
         return {
           ok: true,
           message: `Sold ${shares.toFixed(2)} shares of ${normalizedSymbol}.`,
+        }
+      },
+      addPracticeCash: (amount) => {
+        const normalizedAmount = Math.max(0, Math.floor(amount))
+        if (normalizedAmount <= 0) {
+          return { ok: false, message: "Enter a cash amount above $0." }
+        }
+
+        set((state) => {
+          const cashBalance = state.cashBalance + normalizedAmount
+          return {
+            cashBalance,
+            allocation: getAllocation(state.holdings, cashBalance),
+          }
+        })
+
+        return {
+          ok: true,
+          message: `Added ${normalizedAmount.toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD",
+            maximumFractionDigits: 0,
+          })} in practice cash.`,
+        }
+      },
+      loadSamplePortfolio: () => {
+        const holdings: Holding[] = [
+          {
+            symbol: "AAPL",
+            name: "Apple Inc.",
+            shares: 14,
+            averageCost: 170,
+            lastPrice: 188,
+            change: -1.2,
+            risk: "Medium",
+            category: "stock",
+            dataSource: "Demo holding with live-style quote assumptions",
+          },
+          {
+            symbol: "NVDA",
+            name: "NVIDIA Corporation",
+            shares: 7,
+            averageCost: 780,
+            lastPrice: 910,
+            change: -2.6,
+            risk: "High",
+            category: "stock",
+            dataSource: "Demo holding with live-style quote assumptions",
+          },
+          {
+            symbol: "VTI",
+            name: "Vanguard Total Stock Market ETF",
+            shares: 18,
+            averageCost: 238,
+            lastPrice: 252,
+            change: -0.4,
+            risk: "Medium",
+            category: "fund",
+            expenseRatio: 0.03,
+            diversification: "Thousands of U.S. companies in one fund",
+            plainLanguageRisk: "Still moves with the stock market, but less tied to one company.",
+            dataSource: "Curated beginner ETF profile; prices are demo values.",
+          },
+        ]
+        const cashBalance = 2400
+
+        set({
+          onboarded: true,
+          profile: "Balanced",
+          timeline: "3-5 years",
+          goal: "Buying a home",
+          monthlyContribution: 500,
+          cashBalance,
+          holdings,
+          allocation: getAllocation(holdings, cashBalance),
+          healthScore: getHealthScore({
+            profile: "Balanced",
+            timeline: "3-5 years",
+            monthlyContribution: 500,
+          }),
+        })
+
+        return {
+          ok: true,
+          message: "Loaded the sample beginner portfolio.",
         }
       },
     }),

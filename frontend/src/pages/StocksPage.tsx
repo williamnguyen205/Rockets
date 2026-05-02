@@ -28,6 +28,29 @@ import { cn } from "@/lib/utils"
 import { getHoldingValue, usePortfolioStore } from "@/store/portfolio"
 
 const popularTickers = ["AAPL", "GOOGL", "TSLA", "MSFT", "NVDA"]
+const beginnerFunds = [
+  {
+    symbol: "VTI",
+    name: "Vanguard Total Stock Market ETF",
+    expenseRatio: 0.03,
+    diversification: "Thousands of U.S. companies",
+    plainLanguageRisk: "Broad stock-market exposure; less tied to one company but still moves with markets.",
+  },
+  {
+    symbol: "VXUS",
+    name: "Vanguard Total International Stock ETF",
+    expenseRatio: 0.05,
+    diversification: "Companies outside the U.S.",
+    plainLanguageRisk: "Adds global spread, but currency and international markets can move differently.",
+  },
+  {
+    symbol: "BND",
+    name: "Vanguard Total Bond Market ETF",
+    expenseRatio: 0.03,
+    diversification: "Many U.S. bonds",
+    plainLanguageRisk: "Often steadier than stocks, but bond prices can still fall when rates change.",
+  },
+]
 const periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y"]
 
 function formatCompact(value: number | null) {
@@ -78,6 +101,7 @@ export function StocksPage() {
   const [tradeMessage, setTradeMessage] = useState("")
   const [tradeError, setTradeError] = useState("")
   const { holdings, cashBalance, buyStock, sellStock } = usePortfolioStore()
+  const selectedFund = beginnerFunds.find((fund) => fund.symbol === ticker)
 
   useEffect(() => {
     let cancelled = false
@@ -183,10 +207,18 @@ export function StocksPage() {
       action === "buy"
         ? buyStock({
             symbol: quote.ticker,
-            name: quote.name,
+            name: selectedFund?.name ?? quote.name,
             shares,
             price: quote.price,
             change: quote.changePercent,
+            category: selectedFund ? "fund" : "stock",
+            risk: selectedFund?.symbol === "BND" ? "Low" : "Medium",
+            expenseRatio: selectedFund?.expenseRatio,
+            diversification: selectedFund?.diversification,
+            plainLanguageRisk: selectedFund?.plainLanguageRisk,
+            dataSource: selectedFund
+              ? "Live ETF quote from market data when available; fee/risk profile from curated beginner fund shelf."
+              : "Live stock quote from FastAPI/yfinance when available.",
           })
         : sellStock({
             symbol: quote.ticker,
@@ -251,6 +283,36 @@ export function StocksPage() {
               </button>
             ))}
           </div>
+
+          <div className="mt-5 rounded-md border border-primary/20 bg-primary/5 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase text-primary">Beginner fund shelf</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  These ETFs stand in for mutual-fund style diversification in the prototype.
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-muted-foreground">Fees shown before simulated buys</span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {beginnerFunds.map((fund) => (
+                <button
+                  key={fund.symbol}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-left text-xs transition-colors",
+                    fund.symbol === ticker
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+                  )}
+                  type="button"
+                  onClick={() => selectTicker(fund.symbol)}
+                >
+                  <span className="block font-semibold">{fund.symbol}</span>
+                  <span className="block">{fund.expenseRatio.toFixed(2)}% yearly fee</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -272,6 +334,7 @@ export function StocksPage() {
                   <div className="flex items-center gap-3">
                     <h2 className="text-3xl font-semibold tracking-normal text-foreground">{quote.ticker}</h2>
                     <Badge variant="outline">{quote.name}</Badge>
+                    {selectedFund ? <Badge variant="default">Fund / ETF</Badge> : null}
                   </div>
                   <p className="mt-3 text-4xl font-semibold tracking-normal text-foreground">
                     {formatCurrency(quote.price)}
@@ -316,6 +379,25 @@ export function StocksPage() {
                   </p>
                 </div>
               </div>
+
+              {selectedFund ? (
+                <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                  <div className="rounded-md border border-border bg-muted/45 p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Expense ratio</p>
+                    <p className="mt-1 text-lg font-semibold text-foreground">
+                      {selectedFund.expenseRatio.toFixed(2)}%/yr
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border bg-muted/45 p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Diversification</p>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-foreground">{selectedFund.diversification}</p>
+                  </div>
+                  <div className="rounded-md border border-border bg-muted/45 p-4">
+                    <p className="text-xs font-medium text-muted-foreground">Plain-English risk</p>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-foreground">{selectedFund.plainLanguageRisk}</p>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,380px)]">
                 <div className="rounded-md border border-border bg-card p-4">
